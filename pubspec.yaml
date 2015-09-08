@@ -2,13 +2,14 @@ name: connexa
 description: A starting point for Dart libraries or applications.
 version: 0.0.1
 author: Gil Mendes <gilmendes@designture.net>
-homepage: https://www.designture.net
+homepage: https://www.designture.net/connexa
 
 environment:
   sdk: '>=1.0.0 <2.0.0'
 
-#dependencies:
-#  lib_name: any
+dependencies:
+  logging: any
+  dictionary: '>=0.2.0 <0.3.0'
 
 dev_dependencies:
   test: '>=0.12.0 <0.13.0'

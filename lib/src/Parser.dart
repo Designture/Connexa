@@ -1,4 +1,7 @@
+library connexa.parser;
+
 import 'dart:convert';
+
 /**
  * Message types enumeration.
  */
