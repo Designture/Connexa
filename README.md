@@ -15,7 +15,7 @@ connexa:
 
 ### Use the Pub
 
-``yaml
+```yaml
 connexa: any
 ```
 
