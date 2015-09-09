@@ -1,6 +1,7 @@
 library connexa;
 
 import 'dart:io';
+import 'dart:async';
 import 'package:connexa/src/Server.dart';
 
 export 'src/Server.dart';
@@ -21,18 +22,11 @@ class Connexa {
    * @param {Map} opts to be passed to Manager and/or http server
    * @api public
    */
-  static listen([HttpServer server, int port = 8080, options = const {}]) {
+  static Future<Server> listen(
+      [HttpServer server, int port = 8080, options = const {}]) async {
     if (server == null) {
-      HttpServer.bind(InternetAddress.LOOPBACK_IP_V4, port)
-          .then((HttpServer newServer) {
-        // save server instance
-        server = newServer;
-
-        // config default request handler
-        server.listen(_listenHandler);
-      });
+      server = await HttpServer.bind(InternetAddress.LOOPBACK_IP_V4, port);
     }
-
 
     // create a new Manager instance
     return new Server(server, options);
@@ -46,33 +40,14 @@ class Connexa {
    * @param {Map} opts to be passed to Manager and/or http server
    * @api public
    */
-  static listenV6([HttpServer server, int port = 8080, options = const {}]) {
+  static Future<Server> listenV6(
+      [HttpServer server, int port = 8080, options = const {}]) async {
     if (server == null) {
-      HttpServer.bind(InternetAddress.ANY_IP_V6, port)
-          .then((HttpServer newServer) {
-        // save server instance
-        server = newServer;
-
-        // config default request handler
-        server.listen(_listenHandler);
-      });
+      server = await HttpServer.bind(InternetAddress.ANY_IP_V6, port);
     }
 
     // create a new Manager instance
     return new Server(server, options);
-  }
-
-  static _listenHandler(HttpRequest request) {
-    // get response object
-    HttpResponse response = request.response;
-
-    // prepare response
-    response.headers.add("Content-Type", "text/html; charset=UTF-8");
-    response.write(
-        "Welcome to Connexa supported by <a target=\"_blank\" href=\"https://designture.net\">Designture</a>!");
-
-    // send response
-    response.close();
   }
 
 }

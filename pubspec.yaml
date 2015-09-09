@@ -10,6 +10,7 @@ environment:
 dependencies:
   logging: any
   events: any
+  route: any
 
 dev_dependencies:
   test: '>=0.12.0 <0.13.0'

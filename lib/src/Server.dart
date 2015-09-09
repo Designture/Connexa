@@ -5,8 +5,10 @@ import 'package:logging/logging.dart';
 import 'dart:async';
 import 'package:connexa/src/Store.dart';
 import 'package:connexa/src/stores/MemoryStore.dart';
+import 'package:events/events.dart';
+import 'package:route/server.dart';
 
-class Server {
+class Server extends Events {
 
   /**
    * Map with all namespaces
@@ -41,35 +43,40 @@ class Server {
   /**
    * Constructor.
    */
-  Server(this._server, this._settings) {
-    // setup WebSocket
-    this._setupWebSocket();
-  }
+  Server(HttpServer server, this._settings) {
+    this._server = server;
 
-  /**
-   * Setup WebSocket
-   */
-  void _setupWebSocket() {
-    StreamController sc = new StreamController();
-    sc.stream.transform(new WebSocketTransformer()).listen((WebSocket ws) {
-      ws.listen((message) {
-        _processMessage(ws, message);
+    // setup WebSocket
+    Router router = new Router(server);
+
+    // define default message
+    router.defaultStream.listen(_defaultMessage);
+
+    // define Web Socket handler
+    router.serve('/socket.io')
+        .transform(new WebSocketTransformer())
+        .listen((WebSocket ws) {
+      ws.listen((packet) {
+        _processMessage(ws, packet);
       });
     });
   }
 
-  void _processMessage(WebSocket ws, String message) {
+  void _defaultMessage(HttpRequest request) {
+    // get response object
+    HttpResponse response = request.response;
 
+    // prepare response
+    response.headers.add("Content-Type", "text/html; charset=UTF-8");
+    response.write(
+        "Welcome to Connexa supported by <a target=\"_blank\" href=\"https://designture.net\">Designture</a>!");
+
+    // send response
+    response.close();
   }
 
-  /**
-   * Emit an event to all connected clients.
-   */
-  void emit(String event) {
-    // iterate all users and send the message
-    sockets.forEach((socket) {
-      socket.emit(event);
-    });
+  void _processMessage(WebSocket ws, String message) {
+    print("=>" + message);
   }
 
   void onJoin(sessid, _name) {

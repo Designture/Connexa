@@ -1,10 +1,13 @@
 library connexa.example;
 
 import 'package:connexa/connexa.dart';
+import 'dart:io';
 
 main() {
 
   // create a new Connexa instance
-  Server server = Connexa.listen();
+  Connexa.listen().then((Server server) {
+
+  });
 
 }
