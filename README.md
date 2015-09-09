@@ -1,6 +1,6 @@
 # Connexa
 
-Connexa is a library which aims to create an abstraction to the WebSockets layer in order to simplify the usage for the Dart developers. The code is much similar to [Socket.IO][socketio].
+Connexa is a library which aims to create an abstraction to the WebSockets layer in order to simplify the usage for the Dart developers. The Connexa usage is much similar and protocol compatible with [Socket.IO][socketio].
 
 ## More Information
 
