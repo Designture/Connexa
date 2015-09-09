@@ -1,8 +1,10 @@
 library connexa.socket;
 
-import 'dart:io';
 import 'package:connexa/src/EventEmiter.dart';
 import 'dart:async';
+import 'package:connexa/src/Server.dart';
+import 'package:connexa/src/Namespace.dart';
+import 'package:connexa/src/Store.dart';
 
 enum SocketStates {
   opening,
@@ -20,17 +22,30 @@ enum SocketStates {
 class Socket extends EventEmitter {
 
   String _id;
-  HttpServer _server;
+  SocketNamespace _namespace;
+  Client _store;
+  Server _server;
+  bool _readable = false;
+  SocketStates _state = SocketStates.opening;
+  int _ackPackets;
+  Map<int, Function> _acks;
+  Map<String, Object> _flags;
+
+  /// ---- OLD
+
   bool _upgrading = false;
   bool _upgraded = false;
-  SocketStates _state = SocketStates.opening;
+
+
 
   Timer _checkIntervalTimer = null;
   Timer _upgradeTimeoutTimer = null;
   Timer _pingTimeoutTimer = null;
 
-  Socket(String this._id, HttpServer this._server, var transport, var req) {
-    // TODO: set transport
+  Socket(String this._id, Server this._server, this._namespace,
+      this._readable) {
+    // store the user
+    _server.store.client(_id);
 
     // open the socket
     this.onOpen();
@@ -207,5 +222,9 @@ class Socket extends EventEmitter {
    */
   void closeTransport() {
     // TODO: Close the transport
+  }
+
+  void onDisconnect([String reason]) {
+    // TODO
   }
 }

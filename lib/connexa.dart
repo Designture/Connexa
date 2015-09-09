@@ -1,9 +1,9 @@
 library connexa;
 
 import 'dart:io';
-import 'package:connexa/src/Manager.dart';
+import 'package:connexa/src/Server.dart';
 
-export 'src/Manager.dart';
+export 'src/Server.dart';
 
 class Connexa {
 
@@ -24,7 +24,7 @@ class Connexa {
   static listen([HttpServer server, int port = 8080, options = const {}]) {
     if (server == null) {
       HttpServer.bind(InternetAddress.LOOPBACK_IP_V4, port)
-      .then((HttpServer newServer) {
+          .then((HttpServer newServer) {
         // save server instance
         server = newServer;
 
@@ -35,7 +35,7 @@ class Connexa {
 
 
     // create a new Manager instance
-    return new Manager(server, options);
+    return new Server(server, options);
   }
 
   /**
@@ -49,7 +49,7 @@ class Connexa {
   static listenV6([HttpServer server, int port = 8080, options = const {}]) {
     if (server == null) {
       HttpServer.bind(InternetAddress.ANY_IP_V6, port)
-      .then((HttpServer newServer) {
+          .then((HttpServer newServer) {
         // save server instance
         server = newServer;
 
@@ -59,7 +59,7 @@ class Connexa {
     }
 
     // create a new Manager instance
-    return new Manager(server, options);
+    return new Server(server, options);
   }
 
   static _listenHandler(HttpRequest request) {
@@ -68,7 +68,8 @@ class Connexa {
 
     // prepare response
     response.headers.add("Content-Type", "text/html; charset=UTF-8");
-    response.write("Welcome to Connexa supported by <a target=\"_blank\" href=\"https://designture.net\">Designture</a>!");
+    response.write(
+        "Welcome to Connexa supported by <a target=\"_blank\" href=\"https://designture.net\">Designture</a>!");
 
     // send response
     response.close();
