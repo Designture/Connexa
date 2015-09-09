@@ -20,6 +20,11 @@
 
     <section class="main-content">
       <h2>
+<a id="overview" class="anchor" href="#overview" aria-hidden="true"><span class="octicon octicon-link"></span></a>Overview</h2>
+
+<p>Connexa is a library which aims to create an abstraction to the WebSockets layer in order to simplify the usage for the Dart developers. The Connexa usage is much similar and protocol compatible with <a href="http://socket.io/">Socket.IO</a>.</p>
+
+<h2>
 <a id="how-to-use" class="anchor" href="#how-to-use" aria-hidden="true"><span class="octicon octicon-link"></span></a>How to use</h2>
 
 <h3>
@@ -48,6 +53,9 @@ main() {
     });
   });
 }</pre></div>
+
+<h4>
+<a id="clientdart" class="anchor" href="#clientdart" aria-hidden="true"><span class="octicon octicon-link"></span></a>client.dart</h4>
 
 <div class="highlight highlight-dart"><pre><span class="pl-k">import</span> <span class="pl-s">'package:connexa/connexa.dart'</span>;
 
@@ -83,6 +91,13 @@ server.<span class="pl-k">on</span>(<span class="pl-s">'connection'</span>, (soc
     server.emit(<span class="pl-s">'user disconnected'</span>);
   });
 });</pre></div>
+
+<h2>
+<a id="contributing" class="anchor" href="#contributing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Contributing</h2>
+
+<p>Connexa still at the early stage of development and all contribution are more than welcome. Fork Connexa on GitHub, make it awesome and send a pull request when it is ready.</p>
+
+<p>Please note that one of the Connexa's design goals is to use as many Dart idioms as possible while retaining the Socket.IO compatibility.</p>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/Designture/Connexa">Connexa</a> is maintained by <a href="https://github.com/Designture">Designture</a>.</span>
