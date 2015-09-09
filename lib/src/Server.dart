@@ -24,7 +24,7 @@ class Server extends Events {
   /**
    * Settings.
    */
-  Map<String, Object> _settings;
+  Map<String, Object> _settings = new Map();
 
   /**
    * Logger
@@ -44,11 +44,20 @@ class Server extends Events {
   /**
    * Constructor.
    */
-  Server(HttpServer server, this._settings) {
+  Server(HttpServer server, Map options) {
     this._server = server;
 
+    // setup the default settings
+    _settings.addAll({
+      'pingTimeout' : 60000,
+      'pingInterval': 2500
+    });
+
+    // subscribe the default settings with the user options
+    this._settings.addAll(options);
+
     // setup WebSocket
-    Router router = new Router(server);
+    Router router = new Router (server);
 
     // define default message
     router.defaultStream.listen(_defaultMessage);
@@ -62,6 +71,16 @@ class Server extends Events {
       });
     });
   }
+
+  /**
+   * Accessor for ping timeout config
+   */
+  int get pingTimeout => _settings['pingTimeout'];
+
+  /**
+   * Accessor for ping interval config.
+   */
+  int get pingInterval => _settings['pingInterval'];
 
   /**
    * Default message to show on a request.
