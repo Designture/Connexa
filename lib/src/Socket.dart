@@ -1,12 +1,18 @@
 library connexa.socket;
 
-import 'dart:async';
 import 'package:connexa/src/Server.dart';
-import 'package:connexa/src/Namespace.dart';
-import 'package:connexa/src/Store.dart';
 import 'package:logging/logging.dart';
 import 'package:connexa/src/Parser.dart';
 import 'package:events/events.dart';
+import 'package:connexa/src/Packet.dart';
+
+enum SocketStates {
+  opening,
+  open,
+  upgrade,
+  closed,
+  closing
+}
 
 /**
  * Client class.
@@ -16,20 +22,16 @@ import 'package:events/events.dart';
 class Socket extends Events {
 
   String _id;
-  SocketNamespace _namespace;
-  Client _store;
   Server _manager;
-  bool _readable = false;
-  bool _disconnected = false;
-  int _ackPackets = 0;
+  WebSocket socket;
+  SocketStates readyState = SocketStates.opening;
   Map<int, Function> _acks = new Map();
-  Map<String, Object> _flags;
 
-  Socket(String this._id, Server this._manager, this._namespace,
-      this._readable) {
-    _manager.store.client(_id);
-    this.on('error', defaultError);
+  Socket(String this._id, Server this._manager) {
+
   }
+
+  get id => _id;
 
   /**
    * Accessor shortcut for the handshake data.
@@ -45,36 +47,6 @@ class Socket extends Events {
    * Accessor shortcut for the logger.
    */
   Logger get log => _manager.log;
-
-  /**
-   * JSON message flag.
-   */
-  get json => _flags.json = true;
-
-  /**
-   * Volatile message flag.
-   */
-  get volatile => _flags.volatile = true;
-
-  /**
-   * Broadcast message flag.
-   */
-  get broadcast => _flags.broadcast = true;
-
-  /**
-   * Overrides the room to broadcast messages to (flag)
-   */
-  set to(String room) => _flags.room = room;
-
-  /**
-   * Resets flags.
-   */
-  _setFlags() {
-    _flags = {
-      'endpoint': _namespace.name,
-      'room': ''
-    };
-  }
 
   /**
    * Triggered on disconnect.
@@ -109,57 +81,21 @@ class Socket extends Events {
   /**
    * Transmits a packet.
    */
-  _packet(Map packet) {
-    if (_flags['broadcast']) {
-      log.fine('broadcasting packet');
-      _namespace.to(_flags['room']).except(_id).packet(packet);
-    } else {
-      packet.endpoint = _flags['endpoint'];
-      packet = Parser.encodePacket(packet);
+  _packet(Packet packet) {
+    // export packetCreate event
+    this.emit('packetCreate', packet);
 
-      _dispatch(packet, _flags['volatile']);
-    }
-    _setFlags();
+    // encode the packet
+    String encodedPacket = Parser.encode(packet);
+
+    // send the packet
+    this._manager.sendToClient(this._id, encodedPacket);
   }
-
-  /**
-   * Dispatches a packet.
-   */
-  _dispatch(Object packet, bool volatile) {
-    if (_manager.transports[_id] && _manager.transports[_id].open) {
-      _manager.transports[_id].onDispatch(packet, volatile);
-    } else {
-      if (!volatile) {
-        _manager.onClientDispatch(_id, packet, volatile);
-      }
-      _manager.store.publish('dispatch:$_id', packet, volatile);
-    }
-  }
-
-  /**
-   * Stores data for the client.
-   */
-  Future<bool> set(key, value, fn) => _store.set(key, value);
-
-  /**
-   * Retrieves data for the client
-   */
-  Future<Object> get(key) => _store.get(key);
-
-  /**
-   * Checks data for the client
-   */
-  Future<bool> has(key) => _store.has(key);
-
-  /**
-   * Deletes data for the client
-   */
-  Future<int> del(key) => _store.del(key);
 
   /**
    * Kicks client.
    */
-  disconnect() {
+  void disconnect() {
     if (!_disconnected) {
       log.info('booting client');
       if (_namespace.name.isEmpty()) {
@@ -181,18 +117,17 @@ class Socket extends Events {
   /**
    * Send a message.
    */
-  send(Object data, [Function ack]) {
-    Map packet = {
-      'type': _flags['json'] ? 'json' : 'message',
-      'data': data
-    };
+  send(PacketTypes type, Object data, [Function ack]) {
+    // build the packet
+    Packet packet = new Packet();
 
-    if (ack != null) {
-      packet.id = ++_ackPackets;
-      packet.ack = true;
-      _acks[packet.id] = ack;
-    }
+    // add the packet type
+    packet.type = type;
 
+    // add the packet data
+    packet['data'] = data;
+
+    // send it
     _packet(packet);
   }
 

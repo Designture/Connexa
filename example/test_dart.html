@@ -13,6 +13,7 @@
         main() {
             WebSocket socket = new WebSocket('ws://127.0.0.1:8080/socket.io');
 
+            // define the onOpen listen
             socket.onOpen.listen((Event event) {
                 // create a packet
                 Packet packet = new Packet();
@@ -21,6 +22,21 @@
                 packet['data'] = 'GOD';
 
                 socket.send(Parser.encode(packet));
+            });
+
+            // define the onClose listen
+            socket.onClose.listen((Event event) {
+                print('Connection status: CLOSED');
+            });
+
+            // define the onError listen
+            socket.onError.listen((Event event) {
+                print(event.toString());
+            });
+
+            // define the OnMessage listen
+            socket.onMessage.listen((MessageEvent event) {
+                print(Parser.decode(event.data));
             });
         }
 

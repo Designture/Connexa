@@ -1,13 +1,13 @@
 library connexa.server;
 
-import 'dart:io';
+import 'dart:io' hide Socket;
 import 'package:logging/logging.dart';
-import 'package:connexa/src/Store.dart';
-import 'package:connexa/src/stores/MemoryStore.dart';
 import 'package:events/events.dart';
 import 'package:route/server.dart';
 import 'package:connexa/src/Parser.dart';
 import 'package:connexa/src/Packet.dart';
+import 'package:connexa/src/Socket.dart';
+import 'package:uuid/uuid.dart';
 
 class Server extends Events {
 
@@ -32,14 +32,14 @@ class Server extends Events {
   Logger log = new Logger('connexa:server');
 
   /**
-   * Store
-   */
-  Store store = new MemoryStore();
-
-  /**
    * Map with all connected clients.
    */
   Map<String, Socket> clients = new Map();
+
+  /**
+   * Map with all clients's sockets.
+   */
+  Map<String, WebSocket> sockets = new Map();
 
   /**
    * Constructor.
@@ -80,15 +80,49 @@ class Server extends Events {
   }
 
   /**
+   * Generate a new socket id.
+   */
+  String _generateSocketId() {
+    return (new Uuid()).v4();
+  }
+
+  /**
    * Process the packet.
    */
-  void _processPacket(WebSocket ws, String encodedPacket) {
+  void _processPacket(WebSocket socket, String encodedPacket) {
     // parse the packet
     Packet packet = Parser.decode(encodedPacket);
 
-    print("=>" + packet.type.toString() + " - " + packet.content.toString());
+    // the packet contains an socket id?
+    if (packet.containsKey('sid')) {
+      // get the client id
+      String clientId = packet['sid'];
 
-    this.close();
+      // the client with that id exists?
+      if (!this.clients.containsKey(clientId)) {
+        log.info('connect attempt for invalid id');
+        socket.close();
+      }
+    } else {
+      // create a new Socket class for the new client
+      Socket client = new Socket(_generateSocketId(), this);
+
+      // register the new client
+      clients[client.id] = client;
+
+      // save client socket instance
+      this.sockets[client.id] = socket;
+
+      // add the event to be executed on client close
+      client.once('close', (_) {
+        this.clients.remove(client.id);
+      });
+
+      // emit a new connection event
+      this.emit('connection', client);
+    }
+
+    print("=>" + packet.type.toString() + " - " + packet.content.toString());
   }
 
   /**
@@ -116,4 +150,15 @@ class Server extends Events {
     // TODO
   }
 
+
+  /**
+   * Send a packet to a client.
+   */
+  void sendToClient(String id, String encodedPacket) {
+    // check if the client exists
+    if (this.clients.containsKey(id)) {
+      // send the packet
+      this.sockets[id].add(encodedPacket);
+    }
+  }
 }
