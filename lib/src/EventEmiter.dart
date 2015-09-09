@@ -1,18 +1,18 @@
 library connexa.eventemitter;
 
-import 'package:dictionary/dictionary.dart';
+import 'dart:collection';
 
 class EventEmitter {
 
   /**
    * Mapping of events to a list of event handlers
    */
-  Dictionary<String, List<Function>> events = new Dictionary<String, List<Function>>();
+  HashMap <String, List<Function>> events = new HashMap<String, List<Function>>();
 
   /**
    * Mapping of events to a list of one-time event handlers
    */
-  Dictionary<String, List<Function>> eventsOnce = new Dictionary<String, List<Function>>();
+  HashMap<String, List<Function>> eventsOnce = new HashMap<String, List<Function>>();
 
   /**
    * This function triggers all the handlers currently listening
