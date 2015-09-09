@@ -5,8 +5,6 @@ import 'package:logging/logging.dart';
 import 'dart:async';
 import 'package:connexa/src/Store.dart';
 import 'package:connexa/src/stores/MemoryStore.dart';
-import 'package:connexa/src/transports/WebSocket.dart';
-import 'package:connexa/src/Transport.dart';
 
 class Server {
 
@@ -83,6 +81,10 @@ class Server {
   }
 
   void onLeave(sessid, name) {
+    // TODO
+  }
+
+  void onClientDispatch(id, packet, volatile) {
     // TODO
   }
 

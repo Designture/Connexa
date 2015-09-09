@@ -5,14 +5,8 @@ import 'dart:async';
 import 'package:connexa/src/Server.dart';
 import 'package:connexa/src/Namespace.dart';
 import 'package:connexa/src/Store.dart';
-
-enum SocketStates {
-  opening,
-  open,
-  upgrade,
-  closed,
-  closing
-}
+import 'package:logging/logging.dart';
+import 'package:connexa/src/Parser.dart';
 
 /**
  * Client class.
@@ -24,207 +18,203 @@ class Socket extends EventEmitter {
   String _id;
   SocketNamespace _namespace;
   Client _store;
-  Server _server;
+  Server _manager;
   bool _readable = false;
-  SocketStates _state = SocketStates.opening;
-  int _ackPackets;
-  Map<int, Function> _acks;
+  bool _disconnected = false;
+  int _ackPackets = 0;
+  Map<int, Function> _acks = new Map();
   Map<String, Object> _flags;
 
-  /// ---- OLD
-
-  bool _upgrading = false;
-  bool _upgraded = false;
-
-
-
-  Timer _checkIntervalTimer = null;
-  Timer _upgradeTimeoutTimer = null;
-  Timer _pingTimeoutTimer = null;
-
-  Socket(String this._id, Server this._server, this._namespace,
+  Socket(String this._id, Server this._manager, this._namespace,
       this._readable) {
-    // store the user
-    _server.store.client(_id);
-
-    // open the socket
-    this.onOpen();
-  }
-
-  void onOpen() {
-    this._state = SocketStates.open;
-
-    // send an 'open' packet
-    // TODO: set transport id
-    // TODO: send open packet
-
-    this.emit('open', null);
-    this.setPingTimeout();
+    _manager.store.client(_id);
+    this.on('error', defaultError);
   }
 
   /**
-   * Called upon transport packet.
-   *
-   * @param {Object} packet
+   * Accessor shortcut for the handshake data.
    */
-  void onPacket(Object packet) {
-    if (this._state == SocketStates.open) {
-      // export packet event
-      this.emit('packet', packet);
+  get handshake => _manager.handshaken[_id];
 
-      // reset ping timeout on any packet, incoming data is a good sign of
-      // other side's liveness
-      this.setPingTimeout();
+  /**
+   * Accessor shortcut for the transport type.
+   */
+  get transport => _manager.transports[_id].name;
 
-      switch (packet.type) {
-        case 'ping':
-        // TODO: send pong packet
-          this.emit('heartbeat', null);
-          break;
-        case 'error':
-        // TODO: close transport
-          this.onClose('parse error');
-          break;
-        case 'message':
-          this.emit('data', packet.data);
-          this.emit('message', packet.data);
-          break;
+  /**
+   * Accessor shortcut for the logger.
+   */
+  Logger get log => _manager.log;
+
+  /**
+   * JSON message flag.
+   */
+  get json => _flags.json = true;
+
+  /**
+   * Volatile message flag.
+   */
+  get volatile => _flags.volatile = true;
+
+  /**
+   * Broadcast message flag.
+   */
+  get broadcast => _flags.broadcast = true;
+
+  /**
+   * Overrides the room to broadcast messages to (flag)
+   */
+  set to(String room) => _flags.room = room;
+
+  /**
+   * Resets flags.
+   */
+  _setFlags() {
+    _flags = {
+      'endpoint': _namespace.name,
+      'room': ''
+    };
+  }
+
+  /**
+   * Triggered on disconnect.
+   */
+  _onDisconnect(reason) {
+    if (!_disconnected) {
+      super.emit('disconnected', reason);
+      _disconnected = true;
+    }
+  }
+
+  /**
+   * Joins user to a room.
+   */
+  join(String name) {
+    name = '${_namespace.name}/${name}';
+    _manager.onJoin(_id, name);
+    _manager.store.publish('join', _id, name);
+    return this;
+  }
+
+  /**
+   * Un-joins a user from a room.
+   */
+  leave(String name) {
+    name = '${_namespace.name}/${name}';
+    _manager.onLeave(_id, name);
+    _manager.store.publish('join', _id, name);
+    return this;
+  }
+
+  /**
+   * Transmits a packet.
+   */
+  _packet(Map packet) {
+    if (_flags['broadcast']) {
+      log.fine('broadcasting packet');
+      _namespace.to(_flags['room']).except(_id).packet(packet);
+    } else {
+      packet.endpoint = _flags['endpoint'];
+      packet = Parser.encodePacket(packet);
+
+      _dispatch(packet, _flags['volatile']);
+    }
+    _setFlags();
+  }
+
+  /**
+   * Dispatches a packet.
+   */
+  _dispatch(Object packet, bool volatile) {
+    if (_manager.transports[_id] && _manager.transports[_id].open) {
+      _manager.transports[_id].onDispatch(packet, volatile);
+    } else {
+      if (!volatile) {
+        _manager.onClientDispatch(_id, packet, volatile);
+      }
+      _manager.store.publish('dispatch:$_id', packet, volatile);
+    }
+  }
+
+  /**
+   * Stores data for the client.
+   */
+  Future<bool> set(key, value, fn) => _store.set(key, value);
+
+  /**
+   * Retrieves data for the client
+   */
+  Future<Object> get(key) => _store.get(key);
+
+  /**
+   * Checks data for the client
+   */
+  Future<bool> has(key) => _store.has(key);
+
+  /**
+   * Deletes data for the client
+   */
+  Future<int> del(key) => _store.del(key);
+
+  /**
+   * Kicks client.
+   */
+  disconnect() {
+    if (!_disconnected) {
+      log.info('booting client');
+      if (_namespace.name.isEmpty()) {
+        if (_manager.transports.containsKey(_id) &&
+            _manager.transports[_id].open) {
+          _manager.transports[_id].onForcedDisconnect();
+        } else {
+          _manager.onClientDisconnect(_id);
+          _manager.store.publish('disconnect:$_id');
+        }
+      } else {
+        _packet({ 'type': 'disconnect'});
+        _manager.onLeave(_id, _namespace.name);
+        super.emit('disconnect', 'booted');
       }
     }
   }
 
   /**
-   * Called upon transport error.
+   * Send a message.
    */
-  void onError(err) {
-    this.onClose('transport error', err);
-  }
-
-  /**
-   * Sets and resets ping timeout timer based on client pings.
-   */
-  void setPingTimeout() {
-    this._pingTimeoutTimer?.cancel();
-    this._pingTimeoutTimer =
-    new Timer(this._server.pingInterval + this._server.pingTimeout, () {
-      // TODO: close transport
-      this.onClose('ping timeout');
-    });
-  }
-
-  /**
-   * Attaches handlers for the given transport.
-   */
-  void setTransport(var transport) {
-    // TODO: set up the transport
-    // this function will manage packet events (also message callbacks)
-    this.setupSendCallback();
-  }
-
-  /**
-   * Clears listeners ans timers associated with current transport.
-   */
-  void clearTransport() {
-    // silence further transport errors and prevent uncaught exceptions
-    // TODO: handle error events
-
-    // ensure transport won't stay open
-    // TODO: close the transport
-
-    this._pingTimeoutTimer?.cancel();
-  }
-
-  /**
-   * Called upon transport considered closed.
-   * Possible reasons: `ping timeout`, `client error`, `parse error`,
-   * `transport error`, `server close`, `transport close`
-   */
-  void onClose(String reason, [String description]) {
-    if (this._state != SocketStates.closed) {
-      this._pingTimeoutTimer?.cancel();
-      this._checkIntervalTimer?.cancel();
-      this._checkIntervalTimer = null;
-      this._upgradeTimeoutTimer?.cancel();
-      this.clearTransport();
-      this._state = SocketStates.closed;
-      this.emit('close', {
-        'reason': reason,
-        'description': description
-      });
-    }
-  }
-
-  /**
-   * Setup and manage send callback
-   */
-  void setupSendCallback() {
-    // the message was sent successfully, execute the callback
-    // TODO: add the drain event to the transport
-  }
-
-  /**
-   * Send a packet.
-   *
-   * @param {String} packet type
-   */
-  void sendPacket(String type, Object data,
-      [dynamic options, Function callback]) {
-    if (options is Function) {
-      callback = options;
-      options = null;
-    }
-
-    options ??= {};
-    options.compress ??= false;
-
-    // build the packet
+  send(Object data, [Function ack]) {
     Map packet = {
-      'type': type,
-      'options': options,
+      'type': _flags['json'] ? 'json' : 'message',
       'data': data
     };
 
-    // TODO: Push pakage to a List or send it right now?!
-
-    // export packetCreate event
-    this.emit('packetCreate', packet);
-
-    this.flush();
-  }
-
-  /**
-   *
-   */
-  void flush() {
-    // TODO: Check the transport
-    if (this._state != SocketStates.closed) {
-      // TODO: flush the packets
-    }
-  }
-
-  /**
-   * Closes the socket and underlying transport.
-   */
-  void close() {
-    if (this._state != SocketStates.open) {
-      return;
+    if (ack != null) {
+      packet.id = ++_ackPackets;
+      packet.ack = true;
+      _acks[packet.id] = ack;
     }
 
-    this._state = SocketStates.closing;
-
-    // TODO: If we will use a write buffer, we to check the length and drain
-
-    this.closeTransport();
+    _packet(packet);
   }
 
-  /**
-   * Closes the underlying transport.
-   */
-  void closeTransport() {
-    // TODO: Close the transport
-  }
+  emit(String event, [data]) {
+    if (event == 'newListener') {
+      super.emit(event, data);
+    }
 
-  void onDisconnect([String reason]) {
-    // TODO
+    var lastArg = data[data.length - 1];
+    var packet = {
+      'type': 'event',
+      'name': event
+    };
+
+    if (lastArg is Function) {
+      packet.id = ++this.ackPackets;
+      packet.ack = lastArg.length ? 'data' : true;
+      this.acks[packet.id] = lastArg;
+      data = data.slice(0, args.length - 1);
+    }
+
+    packet.args = data;
+    _packet(packet);
   }
 }
