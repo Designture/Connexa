@@ -2,30 +2,14 @@
 
 Connexa is a library which aims to create an abstraction to the WebSockets layer in order to simplify the usage for the Dart developers. The code is much similar to [Socket.IO][socketio].
 
-## Installing
+## More Information
 
-First, add the library to the list of dependencies in your **pubspec.yaml** file:
-
-### Use the GitHub link
-
-```yaml
-connexa:
-    git: git://github.com/designture/
-```
-
-### Use the Pub
-
-```yaml
-connexa: any
-```
-
-## Usage
-
-__TODO__
+If you want know more about Connexa visit the [Connexa WebSite][connexawebsite].
 
 ## Features and bugs
 
 Please file feature requests and bugs at the [issue tracker][tracker].
 
-[tracker]: http://git.designture.net/Designture/connexa/issues
+[tracker]: https://github.com/Designture/Connexa/issues
 [socketio]: http://socket.io/
+[connexawebsite]: http://designture.github.io/Connexa/
