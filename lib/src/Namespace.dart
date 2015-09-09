@@ -1,14 +1,14 @@
 library connexa.namespace;
 
-import 'package:connexa/src/EventEmiter.dart';
 import 'package:connexa/src/Server.dart';
 import 'package:connexa/src/Socket.dart';
 import 'package:logging/logging.dart';
 import 'package:connexa/src/Store.dart';
 import 'package:connexa/src/Packet.dart';
 import 'package:connexa/src/Parser.dart';
+import 'package:events/events.dart';
 
-class SocketNamespace extends EventEmitter {
+class SocketNamespace extends Events {
 
   Server _server;
   String _name;

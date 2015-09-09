@@ -70,12 +70,12 @@ class Packet implements Map<String, Object> {
   /**
    * Returns a collection containing all the keys in the map.
    */
-  Collection<String> get keys => _content.keys;
+  List<String> get keys => _content.keys;
 
   /**
    * Returns a collection containing all the values in the map.
    */
-  Collection<Object> get values => _content.values;
+  List<Object> get values => _content.values;
 
   /**
    * The number of {key, value} pairs in the map.
@@ -86,4 +86,12 @@ class Packet implements Map<String, Object> {
    * Returns true if there is no {key, value} pair in the map.
    */
   bool get isEmpty => _content.isEmpty;
+
+  @override
+  void addAll(Map<String, Object> other) {
+    _content.addAll(other);
+  }
+
+  @override
+  bool get isNotEmpty => _content.isNotEmpty;
 }

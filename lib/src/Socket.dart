@@ -1,19 +1,19 @@
 library connexa.socket;
 
-import 'package:connexa/src/EventEmiter.dart';
 import 'dart:async';
 import 'package:connexa/src/Server.dart';
 import 'package:connexa/src/Namespace.dart';
 import 'package:connexa/src/Store.dart';
 import 'package:logging/logging.dart';
 import 'package:connexa/src/Parser.dart';
+import 'package:events/events.dart';
 
 /**
  * Client class.
  *
  * @api private
  */
-class Socket extends EventEmitter {
+class Socket extends Events {
 
   String _id;
   SocketNamespace _namespace;

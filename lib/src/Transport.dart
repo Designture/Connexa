@@ -1,8 +1,8 @@
 library connexa.transport;
 
 import 'dart:io';
-import 'EventEmiter.dart';
 import 'Parser.dart';
+import 'package:events/events.dart';
 
 enum TransportStates {
   open,
@@ -10,7 +10,7 @@ enum TransportStates {
   closing
 }
 
-abstract class Transport extends EventEmitter {
+abstract class Transport extends Events {
 
   TransportStates state = TransportStates.open;
   HttpRequest request = null;
