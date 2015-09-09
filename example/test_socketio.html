@@ -4,21 +4,12 @@
     <meta charset="UTF-8">
     <title></title>
 
-    <script type="application/dart">
-        import 'dart:html';
-        import 'dart:convert';
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
 
-        main() {
-            WebSocket socket = new WebSocket('ws://127.0.0.1:8080/socket.io');
-
-            socket.onOpen.listen((Event event) {
-                socket.send(JSON.encode({
-                    'type': 'connect',
-                    'nickname': 'GOD'
-                }));
-            });
-        }
-
+    <script>
+        var socket = io('ws://localhost:8080/socket.io');
+        socket.emit('message', '!!! TEST !!!');
     </script>
 </head>
 <body>

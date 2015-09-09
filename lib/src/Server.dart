@@ -2,11 +2,12 @@ library connexa.server;
 
 import 'dart:io';
 import 'package:logging/logging.dart';
-import 'dart:async';
 import 'package:connexa/src/Store.dart';
 import 'package:connexa/src/stores/MemoryStore.dart';
 import 'package:events/events.dart';
 import 'package:route/server.dart';
+import 'package:connexa/src/Parser.dart';
+import 'package:connexa/src/Packet.dart';
 
 class Server extends Events {
 
@@ -36,9 +37,9 @@ class Server extends Events {
   Store store = new MemoryStore();
 
   /**
-   * List with all socket's connected users.
+   * Map with all connected clients.
    */
-  List<WebSocket> sockets = new List();
+  Map<String, Socket> clients = new Map();
 
   /**
    * Constructor.
@@ -57,11 +58,14 @@ class Server extends Events {
         .transform(new WebSocketTransformer())
         .listen((WebSocket ws) {
       ws.listen((packet) {
-        _processMessage(ws, packet);
+        _processPacket(ws, packet);
       });
     });
   }
 
+  /**
+   * Default message to show on a request.
+   */
   void _defaultMessage(HttpRequest request) {
     // get response object
     HttpResponse response = request.response;
@@ -75,8 +79,25 @@ class Server extends Events {
     response.close();
   }
 
-  void _processMessage(WebSocket ws, String message) {
-    print("=>" + message);
+  /**
+   * Process the packet.
+   */
+  void _processPacket(WebSocket ws, String encodedPacket) {
+    // parse the packet
+    Packet packet = Parser.decode(encodedPacket);
+
+    print("=>" + packet.type.toString() + " - " + packet.content.toString());
+
+    this.close();
+  }
+
+  /**
+   * Close all open clients.
+   */
+  Server close() {
+    log.info('closing all open clients');
+    this.clients.forEach((String k, Socket s) => s.close());
+    return this;
   }
 
   void onJoin(sessid, _name) {

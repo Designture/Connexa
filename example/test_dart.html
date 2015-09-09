@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+
+    <script type="application/dart">
+        import 'dart:html';
+        import 'dart:convert';
+        import 'package:connexa/src/Parser.dart';
+        import 'package:connexa/src/Packet.dart';
+
+        main() {
+            WebSocket socket = new WebSocket('ws://127.0.0.1:8080/socket.io');
+
+            socket.onOpen.listen((Event event) {
+                // create a packet
+                Packet packet = new Packet();
+
+                packet.type = PacketTypes.message;
+                packet['data'] = 'GOD';
+
+                socket.send(Parser.encode(packet));
+            });
+        }
+
+    </script>
+</head>
+<body>
+
+</body>
+</html>

@@ -1,7 +1,45 @@
 library connexa.packet;
 
+/**
+ * Packets types
+ *
+ * 0 - open   - nws
+ * 1 - close  - nws
+ * 2 - ping
+ * 3 - pong
+ * 4 - message
+ * 5 - upgrade
+ * 6 - noop
+ */
+enum PacketTypes {
+  open,
+  close,
+  ping,
+  pong,
+  message,
+  upgrade,
+  noop
+}
+
+/**
+ * Class how represents a Packet.
+ */
 class Packet implements Map<String, Object> {
-  Map<String, Object> _content;
+
+  /**
+   * Packet contents
+   */
+  Map<String, Object> _content = new Map();
+
+  /**
+   * Package type
+   */
+  PacketTypes type;
+
+  /**
+   * Get packet content map.
+   */
+  Map get content => _content;
 
   /**
    * Returns whether this map contains the given [value].

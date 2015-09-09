@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:connexa/src/Server.dart';
 
 export 'src/Server.dart';
+export 'src/Parser.dart';
 
 class Connexa {
 
