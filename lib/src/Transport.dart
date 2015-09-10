@@ -3,6 +3,7 @@ library connexa.transport;
 import 'dart:io';
 import 'Parser.dart';
 import 'package:events/events.dart';
+import 'package:logging/logging.dart';
 
 enum TransportStates {
   open,
@@ -12,30 +13,44 @@ enum TransportStates {
 
 abstract class Transport extends Events {
 
-  TransportStates state = TransportStates.open;
-  HttpRequest request = null;
+  TransportStates _readyState = TransportStates.open;
+  HttpRequest _request = null;
+
+  /**
+   * Logger
+   */
+  Logger _log = new Logger('connexa:transport');
 
   /**
    * Construct
    */
-  Transport(dynamic request) {
-    this._state = TransportStates.open;
-  }
-
-  void onRequest(HttpRequest request) {
-    this.request = request;
+  Transport(HttpRequest request) {
+    this._readyState = TransportStates.open;
   }
 
   /**
-   * CLose the transport.s
+   * Get for the logger.
+   */
+  Logger get log => _log;
+
+  /**
+   * Called with an incoming HTTP request.
+   */
+  void onRequest(HttpRequest request) {
+    log.info('setting request');
+    this._request = request;
+  }
+
+  /**
+   * CLose the transport.
    */
   void close(Function fn) {
-    if (this.state == TransportStates.closed ||
-        this.state == TransportStates.closing) {
+    if (this._readyState == TransportStates.closed ||
+        this._readyState == TransportStates.closing) {
       return;
     }
 
-    this.state = TransportStates.closing;
+    this._readyState = TransportStates.closing;
     this.doClose(fn ?? () => null);
   }
 
@@ -46,6 +61,7 @@ abstract class Transport extends Events {
    * @param {Object} error description
    */
   void onError(msg, desc) {
+    // FIXME: (#issue 9) We need to implement our EventEmitter
     if (!this.events.get('error').isEmpty()) {
       Error err = new Error();
       err.msg = msg;
@@ -69,8 +85,8 @@ abstract class Transport extends Events {
     this.onPacket(Parser.decode(data));
   }
 
-  void onClose() {
-    this.state = TransportStates.closed;
+  void onClose([Function fn]) {
+    this._readyState = TransportStates.closed;
     this.emit('close');
   }
 
