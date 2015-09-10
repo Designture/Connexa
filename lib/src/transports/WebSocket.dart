@@ -18,19 +18,6 @@ class WebSocketTransport extends Transport {
   WebSocket _socket;
 
   /**
-   * Is writable?
-   */
-  bool _writable = false;
-
-  /**
-   * Transport name
-   */
-  String name;
-
-  bool handlesUpgrades = true;
-  bool supportsFraming = true;
-
-  /**
    *
    */
   Logger _log = new Logger('connexa:ws');

@@ -13,13 +13,38 @@ enum TransportStates {
 
 abstract class Transport extends Events {
 
+  /**
+   * Current transport state.
+   */
   TransportStates _readyState = TransportStates.open;
+
+  /**
+   * Original HttpRequest.
+   */
   HttpRequest _request = null;
+
+  /**
+   * Socket id.
+   */
+  String sid;
 
   /**
    * Logger
    */
   Logger _log = new Logger('connexa:transport');
+
+  /**
+   * Is writable?
+   */
+  bool writable = false;
+
+  /**
+   * Transport name
+   */
+  String name;
+
+  bool handlesUpgrades = true;
+  bool supportsFraming = true;
 
   /**
    * Construct
@@ -44,14 +69,14 @@ abstract class Transport extends Events {
   /**
    * CLose the transport.
    */
-  void close(Function fn) {
+  void close([Function fn]) {
     if (this._readyState == TransportStates.closed ||
         this._readyState == TransportStates.closing) {
       return;
     }
 
     this._readyState = TransportStates.closing;
-    this.doClose(fn ?? () => null);
+    this.onClose(fn ?? () => null);
   }
 
   /**
@@ -89,5 +114,10 @@ abstract class Transport extends Events {
     this._readyState = TransportStates.closed;
     this.emit('close');
   }
+
+  /**
+   * Send data to the client.
+   */
+  void send(dynamic packets);
 
 }

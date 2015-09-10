@@ -17,6 +17,18 @@ enum SocketStates {
 }
 
 /**
+ * Class to be passed on the flush event.
+ */
+class FlushEvent {
+
+  Socket socket;
+  List<Packet> writeBuffer;
+
+  FlushEvent(this.socket, this.writeBuffer);
+
+}
+
+/**
  * Client class.
  *
  * @api private
@@ -28,8 +40,17 @@ class Socket extends Events {
   SocketStates _readyState = SocketStates.opening;
   Transport _transport;
 
+  List<Packet> _writeBuffer = new List();
+  List<Function> _packetsFn = new List();
+  List<Function> _sendCallbackFn = new List();
+
   Timer _checkIntervalTimer = null;
   Timer _pingTimeoutTimer = null;
+
+  /**
+   * Logger
+   */
+  Logger _log = new Logger('connexa:socket');
 
   /**
    * Constructor
@@ -45,16 +66,21 @@ class Socket extends Events {
   String get id => _id;
 
   /**
+   * Getter fr the logger.
+   */
+  Logger get log => _log;
+
+  /**
    * Called upon transport considered open.
    */
   void onOpen() {
     this._readyState = SocketStates.open;
 
     // send an 'open' packet
-    // TODO: set transport id
+    this._transport.sid = this._id;
 
     // TODO: add the available upgrades
-    this.send(PacketTypes.open, {
+    this.sendPacket(PacketTypes.open, {
       'sid': this._id,
       'pingInterval': this._server.pingInterval,
       'pingTimeout': this._server.pingTimeout
@@ -81,11 +107,11 @@ class Socket extends Events {
 
       switch (packet.type) {
         case PacketTypes.ping:
-        // TODO: send pong packet
+          this.sendPacket(PacketTypes.pong);
           this.emit('heartbeat', null);
           break;
         case PacketTypes.close:
-        // TODO: close transport
+          this._transport.close();
           this.onClose('parse error');
           break;
         case PacketTypes.message:
@@ -95,6 +121,8 @@ class Socket extends Events {
         default:
         // Don't do nothing
       }
+    } else {
+      log.info('packet received with closed socket');
     }
   }
 
@@ -102,6 +130,7 @@ class Socket extends Events {
    * Called upon transport error.
    */
   void onError(err) {
+    log.info('transport error');
     this.onClose('transport error', err);
   }
 
@@ -118,7 +147,7 @@ class Socket extends Events {
 
     this._pingTimeoutTimer =
     new Timer(duraction, () {
-      // TODO: close transport
+      this._transport.close();
       this.onClose('ping timeout');
     });
   }
@@ -128,9 +157,19 @@ class Socket extends Events {
    */
   void setTransport(Transport transport) {
     this._transport = transport;
-    // TODO: set up the transport
+    this._transport.once('error', this.onError);
+    this._transport.on('packet', this.onPacket);
+    this._transport.on('drain', this.flush);
+    this._transport.once('close', this.onClose);
     // this function will manage packet events (also message callbacks)
     //this._setupSendCallback();
+  }
+
+  /**
+   * Upgrades socket to the given transport.
+   */
+  void maybeUpgrade(Transport) {
+    // TODO
   }
 
   /**
@@ -138,10 +177,12 @@ class Socket extends Events {
    */
   void clearTransport() {
     // silence further transport errors and prevent uncaught exceptions
-    // TODO: handle error events on transport
+    this._transport.on('error', () {
+      log.info('error triggered by discarted transport');
+    });
 
     // ensure transport won't stay open
-    // TODO: close the transport
+    this._transport.close();
 
     // cancel ping timeout
     this._pingTimeoutTimer?.cancel();
@@ -168,38 +209,83 @@ class Socket extends Events {
   }
 
   /**
-   * Accessor shortcut for the logger.
+   * Sends a message packet.
    */
-  Logger get log => _server.log;
-
-  /**
-   * Transmits a packet.
-   */
-  _packet(Packet packet) {
-    // export packetCreate event
-    this.emit('packetCreate', packet);
-
-    // encode the packet
-    String encodedPacket = Parser.encode(packet);
-
-    // send the packet
-    this._server.sendToClient(this._id, encodedPacket);
+  void send(dynamic data, [Map options, Function callback]) {
+    this.sendPacket(PacketTypes.message, data, options, callback);
   }
 
   /**
    * Send a message.
    */
-  send(PacketTypes type, Object data, [Function ack]) {
-    // build the packet
-    Packet packet = new Packet();
+  void sendPacket(PacketTypes type,
+      [Object data, Map options, Function callback]) {
+    if (this._readyState != SocketStates.closing) {
+      log.info('sending packet "${type} (${data})"');
 
-    // add the packet type
-    packet.type = type;
+      // build the packet
+      Packet packet = new Packet();
 
-    // add the packet data
-    packet['data'] = data;
+      // add the packet type
+      packet.type = type;
 
-    // send it
-    _packet(packet);
+      // add the packet data
+      packet['data'] = data;
+
+      // export packetCreate event
+      this.emit('packetCreate', packet);
+
+      // add to the list of packet to be sent
+      this._writeBuffer.add(packet);
+
+      // add send callback to object
+      this._packetsFn.add(callback);
+
+      this.flush();
+    }
+  }
+
+  /**
+   * Attempts to flush the packets buffer.
+   */
+  void flush() {
+    if (this._readyState != SocketStates.closed && this._transport.writable &&
+        !this._writeBuffer.isEmpty) {
+      log.info('flusing buffer to transport');
+      this.emit('flush', this._writeBuffer);
+      this._server.emit('flush', new FlushEvent(this, this._writeBuffer));
+      List<Packet> wbuf = this._writeBuffer;
+      this._writeBuffer.clear();
+      // TODO: send callback
+      this._packetsFn.clear();
+      this._transport.send(wbuf);
+      this.emit('drain');
+      this._server.emit('drain', this);
+    }
+  }
+
+  /**
+   * Closes the socket and underlying transport.
+   */
+  void close() {
+    if (this._readyState != SocketStates.open) {
+      return;
+    }
+
+    this._readyState = SocketStates.closing;
+
+    if (!this._writeBuffer.isEmpty) {
+      this.once('drain', this.closeTransport);
+      return;
+    }
+
+    this.closeTransport();
+  }
+
+  /**
+   * Closes the underlying transport.
+   */
+  void closeTransport() {
+    this._transport.close(this.onClose);
   }
 }
