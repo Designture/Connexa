@@ -9,6 +9,7 @@ import 'package:connexa/src/Packet.dart';
 import 'package:connexa/src/Socket.dart';
 import 'package:uuid/uuid.dart';
 import 'package:connexa/src/transports/WebSocket.dart';
+import 'package:connexa/src/Transport.dart';
 
 class Server extends Events {
 
@@ -68,28 +69,12 @@ class Server extends Events {
     if (_settings['debug'] == true) {
       Logger.root.level = Level.ALL;
       Logger.root.onRecord.listen((LogRecord rec) {
-        print('${rec.level.name}: ${rec.time}: ${rec.message}');
+        print('(${rec.loggerName}) ${rec.level.name}: ${rec.time}: ${rec.message}');
       });
     }
 
     // attache the HTTPServer to Connexa server manager
     this.attach(server);
-
-    /*
-    // setup WebSocket
-    Router router = new Router (server);
-
-    // define default message
-    router.defaultStream.listen(_defaultMessage);
-
-    // define Web Socket handler
-    router.serve('/socket.io')
-        .transform(new WebSocketTransformer())
-        .listen((WebSocket ws) {
-      ws.listen((packet) {
-        _processPacket(ws, packet);
-      });
-    });*/
   }
 
   /**
@@ -117,17 +102,29 @@ class Server extends Events {
     // TODO: handle the error
   }
 
+  /**
+   * Handle Http requests
+   */
   void _handleRequest(HttpRequest req) {
     log.info('handling "${req.method}" http request "${req.uri}"');
 
-
+    // TODO: put this validations in a separated method
     if (!this._hasSocket(req.uri.path)) {
       return this._giveNiceReply(req);
     } else if (!this._validaProtocol(req)) {
       return this._denialRequest(req);
     }
 
-    // TODO: handshake
+    // get query parameters
+    Map query = req.uri.queryParameters;
+
+    // check the request has already a socket Id
+    if (query.containsKey('sid')) {
+      log.info('setting new request for existing client');
+      this.clients[query['sid']].transport.onRequest(req);
+    } else {
+      this.handshake(query['transport'], req);
+    }
   }
 
   /**
@@ -211,42 +208,44 @@ class Server extends Events {
   }
 
   /**
-   * Process the packet.
+   * Handshakes a new client.
    */
-  void _processPacket(WebSocket socket, String encodedPacket) {
-    // parse the packet
-    Packet packet = Parser.decode(encodedPacket);
+  void handshake(String transportName, HttpRequest req) {
+    // generate a new unique id for new client
+    String id = this._generateSocketId();
 
-    // the packet contains an socket id?
-    if (packet.containsKey('sid')) {
-      // get the client id
-      String clientId = packet['sid'];
+    log.info('handshaking client "${id}"');
 
-      // the client with that id exists?
-      if (!this.clients.containsKey(clientId)) {
-        log.info('connect attempt for invalid id');
-        socket.close();
-      }
-    } else {
-      // create a new Socket class for the new client
-      Socket client = new Socket(_generateSocketId(), this);
-
-      // register the new client
-      this.clients[client.id] = client;
-
-      // save client socket instance
-      this.sockets[client.id] = socket;
-
-      // add the event to be executed on client close
-      client.once('close', (_) {
-        this.clients.remove(client.id);
-      });
-
-      // emit a new connection event
-      this.emit('connection', client);
+    // TODO: Search if we can do this in a dynamic way
+    Transport transport;
+    if (transportName == 'websocket') {
+      transport = new WebSocketTransport(req);
     }
 
-    print("=>" + packet.type.toString() + " - " + packet.content.toString());
+    // get query params
+    Map query = req.uri.queryParameters;
+
+
+    // client supports binary?
+    transport.supportsBinary = !query.containsKey('b64');
+
+    // create a new Socket instance
+    Socket socket = new Socket(id, this, transport, req);
+
+    // TODO: add support to cookies
+
+    // set the request on transport
+    transport.onRequest(req);
+
+    // save client instance
+    this.clients[id] = socket;
+
+    // define action on socket close
+    socket.on('close', (_) {
+      this.clients.remove(id);
+    });
+
+    this.emit('connection', socket);
   }
 
   /**
@@ -257,23 +256,6 @@ class Server extends Events {
     this.clients.forEach((String k, Socket s) => s.close());
     return this;
   }
-
-  void onJoin(sessid, _name) {
-    // TODO
-  }
-
-  void onHandshake(sessid, data) {
-    // TODO
-  }
-
-  void onLeave(sessid, name) {
-    // TODO
-  }
-
-  void onClientDispatch(id, packet, volatile) {
-    // TODO
-  }
-
 
   /**
    * Send a packet to a client.

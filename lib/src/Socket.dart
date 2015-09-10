@@ -7,6 +7,7 @@ import 'package:connexa/src/Parser.dart';
 import 'package:events/events.dart';
 import 'package:connexa/src/Packet.dart';
 import 'package:connexa/src/Transport.dart';
+import 'dart:io';
 
 enum SocketStates {
   opening,
@@ -38,7 +39,8 @@ class Socket extends Events {
   String _id;
   Server _server;
   SocketStates _readyState = SocketStates.opening;
-  Transport _transport;
+  Transport transport;
+  HttpRequest _req;
 
   List<Packet> _writeBuffer = new List();
   List<Function> _packetsFn = new List();
@@ -55,7 +57,8 @@ class Socket extends Events {
   /**
    * Constructor
    */
-  Socket(String this._id, Server this._server, Transport transport) {
+  Socket(String this._id, Server this._server, Transport transport,
+      HttpRequest this._req) {
     this.setTransport(transport);
     this.onOpen();
   }
@@ -77,7 +80,7 @@ class Socket extends Events {
     this._readyState = SocketStates.open;
 
     // send an 'open' packet
-    this._transport.sid = this._id;
+    this.transport.sid = this._id;
 
     // TODO: add the available upgrades
     this.sendPacket(PacketTypes.open, {
@@ -111,7 +114,7 @@ class Socket extends Events {
           this.emit('heartbeat', null);
           break;
         case PacketTypes.close:
-          this._transport.close();
+          this.transport.close();
           this.onClose('parse error');
           break;
         case PacketTypes.message:
@@ -147,7 +150,7 @@ class Socket extends Events {
 
     this._pingTimeoutTimer =
     new Timer(duraction, () {
-      this._transport.close();
+      this.transport.close();
       this.onClose('ping timeout');
     });
   }
@@ -156,11 +159,11 @@ class Socket extends Events {
    * Attaches handlers for the given transport.
    */
   void setTransport(Transport transport) {
-    this._transport = transport;
-    this._transport.once('error', this.onError);
-    this._transport.on('packet', this.onPacket);
-    this._transport.on('drain', this.flush);
-    this._transport.once('close', this.onClose);
+    this.transport = transport;
+    this.transport.once('error', this.onError);
+    this.transport.on('packet', this.onPacket);
+    this.transport.on('drain', this.flush);
+    this.transport.once('close', this.onClose);
     // this function will manage packet events (also message callbacks)
     //this._setupSendCallback();
   }
@@ -177,12 +180,12 @@ class Socket extends Events {
    */
   void clearTransport() {
     // silence further transport errors and prevent uncaught exceptions
-    this._transport.on('error', () {
+    this.transport.on('error', (_) {
       log.info('error triggered by discarted transport');
     });
 
     // ensure transport won't stay open
-    this._transport.close();
+    this.transport.close();
 
     // cancel ping timeout
     this._pingTimeoutTimer?.cancel();
@@ -248,8 +251,8 @@ class Socket extends Events {
   /**
    * Attempts to flush the packets buffer.
    */
-  void flush() {
-    if (this._readyState != SocketStates.closed && this._transport.writable &&
+  void flush([_]) {
+    if (this._readyState != SocketStates.closed && this.transport.writable &&
         !this._writeBuffer.isEmpty) {
       log.info('flusing buffer to transport');
       this.emit('flush', this._writeBuffer);
@@ -258,7 +261,7 @@ class Socket extends Events {
       this._writeBuffer.clear();
       // TODO: send callback
       this._packetsFn.clear();
-      this._transport.send(wbuf);
+      this.transport.send(wbuf);
       this.emit('drain');
       this._server.emit('drain', this);
     }
@@ -286,6 +289,6 @@ class Socket extends Events {
    * Closes the underlying transport.
    */
   void closeTransport() {
-    this._transport.close(this.onClose);
+    this.transport.close(this.onClose);
   }
 }

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'Parser.dart';
 import 'package:events/events.dart';
 import 'package:logging/logging.dart';
+import 'package:connexa/src/Packet.dart';
 
 enum TransportStates {
   open,
@@ -45,6 +46,7 @@ abstract class Transport extends Events {
 
   bool handlesUpgrades = true;
   bool supportsFraming = true;
+  bool supportsBinary = false;
 
   /**
    * Construct
@@ -99,7 +101,7 @@ abstract class Transport extends Events {
   /**
    * Called with parsed out a packets from the data stream.
    */
-  void onPacket(var packet) {
+  void onPacket(Packet packet) {
     this.emit('packet', packet);
   }
 

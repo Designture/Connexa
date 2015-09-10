@@ -11,7 +11,7 @@
         import 'package:connexa/src/Packet.dart';
 
         main() {
-            WebSocket socket = new WebSocket('ws://127.0.0.1:8080/socket.io');
+            WebSocket socket = new WebSocket('ws://127.0.0.1:8080/socket.io?transport=websocket');
 
             // define the onOpen listen
             socket.onOpen.listen((Event event) {

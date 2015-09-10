@@ -28,10 +28,13 @@ class WebSocketTransport extends Transport {
    * @param WebSocket
    */
   WebSocketTransport(HttpRequest req) : super(req) {
+    // set transformer name
+    this.name = 'websocket';
+
     // save socket instance
     WebSocketTransformer.upgrade(req).then((socket) {
       this._socket = socket;
-      this._writable = true;
+      this.writable = true;
 
       this._socket.handleError(() {
         this.onClose();
@@ -39,7 +42,7 @@ class WebSocketTransport extends Transport {
 
       // start listen the socket;
       socket.listen((packet) {
-        this.onPacket(packet);
+        this.onData(packet);
       });
     }).catchError((Exception e) {
       this.onError('Can\'t conenct with the socket.', e.toString());
