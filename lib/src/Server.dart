@@ -50,11 +50,20 @@ class Server extends Events {
     // setup the default settings
     _settings.addAll({
       'pingTimeout' : 60000,
-      'pingInterval': 2500
+      'pingInterval': 2500,
+      'debug': false
     });
 
     // subscribe the default settings with the user options
     this._settings.addAll(options);
+
+    // is to enable debug?
+    if (_settings['debug'] == true) {
+      Logger.root.level = Level.ALL;
+      Logger.root.onRecord.listen((LogRecord rec) {
+        print('${rec.level.name}: ${rec.time}: ${rec.message}');
+      });
+    }
 
     // setup WebSocket
     Router router = new Router (server);
@@ -127,7 +136,7 @@ class Server extends Events {
       Socket client = new Socket(_generateSocketId(), this);
 
       // register the new client
-      clients[client.id] = client;
+      this.clients[client.id] = client;
 
       // save client socket instance
       this.sockets[client.id] = socket;

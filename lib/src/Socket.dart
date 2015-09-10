@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:connexa/src/Parser.dart';
 import 'package:events/events.dart';
 import 'package:connexa/src/Packet.dart';
+import 'package:connexa/src/Transport.dart';
 
 enum SocketStates {
   opening,
@@ -25,6 +26,7 @@ class Socket extends Events {
   String _id;
   Server _server;
   SocketStates _readyState = SocketStates.opening;
+  Transport _transport;
 
   Timer _checkIntervalTimer = null;
   Timer _pingTimeoutTimer = null;
@@ -32,7 +34,8 @@ class Socket extends Events {
   /**
    * Constructor
    */
-  Socket(String this._id, Server this._server) {
+  Socket(String this._id, Server this._server, Transport transport) {
+    this.setTransport(transport);
     this.onOpen();
   }
 
@@ -41,6 +44,9 @@ class Socket extends Events {
    */
   String get id => _id;
 
+  /**
+   * Called upon transport considered open.
+   */
   void onOpen() {
     this._readyState = SocketStates.open;
 
@@ -66,6 +72,7 @@ class Socket extends Events {
   void onPacket(Packet packet) {
     if (this._readyState == SocketStates.open) {
       // export packet event
+      log.info('packet');
       this.emit('packet', packet);
 
       // reset ping timeout on any packet, incoming data is a good sign of
@@ -119,10 +126,11 @@ class Socket extends Events {
   /**
    * Attaches handlers for the given transport.
    */
-  void setTransport(var transport) {
+  void setTransport(Transport transport) {
+    this._transport = transport;
     // TODO: set up the transport
     // this function will manage packet events (also message callbacks)
-    this.setupSendCallback();
+    //this._setupSendCallback();
   }
 
   /**
