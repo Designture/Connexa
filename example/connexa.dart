@@ -1,6 +1,6 @@
 library connexa.example;
 
-import 'package:connexa/connexa.dart';
+import 'package:connexa/server.dart';
 
 main() {
   // create a new Connexa instance

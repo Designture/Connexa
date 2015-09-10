@@ -8,6 +8,7 @@ import 'package:connexa/src/Parser.dart';
 import 'package:connexa/src/Packet.dart';
 import 'package:connexa/src/Socket.dart';
 import 'package:uuid/uuid.dart';
+import 'package:connexa/src/transports/WebSocket.dart';
 
 class Server extends Events {
 
@@ -42,6 +43,11 @@ class Server extends Events {
   Map<String, WebSocket> sockets = new Map();
 
   /**
+   * Map to store some runtime data.
+   */
+  Map<String, Object> _stores = {'paths': ['/socket.io']};
+
+  /**
    * Constructor.
    */
   Server(HttpServer server, Map options) {
@@ -51,7 +57,8 @@ class Server extends Events {
     _settings.addAll({
       'pingTimeout' : 60000,
       'pingInterval': 2500,
-      'debug': false
+      'debug': false,
+      'transports': ['websocket']
     });
 
     // subscribe the default settings with the user options
@@ -65,6 +72,10 @@ class Server extends Events {
       });
     }
 
+    // attache the HTTPServer to Connexa server manager
+    this.attach(server);
+
+    /*
     // setup WebSocket
     Router router = new Router (server);
 
@@ -78,7 +89,7 @@ class Server extends Events {
       ws.listen((packet) {
         _processPacket(ws, packet);
       });
-    });
+    });*/
   }
 
   /**
@@ -92,19 +103,104 @@ class Server extends Events {
   int get pingInterval => _settings['pingInterval'];
 
   /**
-   * Default message to show on a request.
+   * Attach a HTTPServer.
    */
-  void _defaultMessage(HttpRequest request) {
-    // get response object
-    HttpResponse response = request.response;
+  void attach(HttpServer server) {
+    this._server = server;
+    server.listen(this._handleRequest, onError: this._onError);
+  }
 
-    // prepare response
-    response.headers.add("Content-Type", "text/html; charset=UTF-8");
-    response.write(
-        "Welcome to Connexa supported by <a target=\"_blank\" href=\"https://designture.net\">Designture</a>!");
+  /**
+   * Handle a HttpServer error.
+   */
+  void _onError(dynamic data) {
+    // TODO: handle the error
+  }
 
-    // send response
-    response.close();
+  void _handleRequest(HttpRequest req) {
+    log.info('handling "${req.method}" http request "${req.uri}"');
+
+
+    if (!this._hasSocket(req.uri.path)) {
+      return this._giveNiceReply(req);
+    } else if (!this._validaProtocol(req)) {
+      return this._denialRequest(req);
+    }
+
+    // TODO: handshake
+  }
+
+  /**
+   * Check if the requested path has a socket.
+   */
+  bool _hasSocket(String path) {
+    List<String> paths = this._stores['paths'];
+    return paths.indexOf(path) != -1;
+  }
+
+  /**
+   * Give a nice default message to the user.
+   */
+  void _giveNiceReply(HttpRequest req) {
+    req.response.statusCode = 200;
+    req.response.headers.add('Content-Type', 'text/html; charset=UTF-8');
+    req.response.write(
+        'Welcome to Connexa supported by <a target="_blank" href="https://designture.net">Designture</a>!');
+    req.response.close();
+  }
+
+  /**
+   * Error response for an invalid request.
+   */
+  void _denialRequest(HttpRequest req) {
+    req.response.statusCode = 500;
+    req.response.headers.add('Content-Type', 'text/html; charset=UTF-8');
+    req.response.write('Bad Request: Not a websocket Request!');
+    req.response.close();
+  }
+
+  /**
+   * Check if a alid protocol.
+   */
+  bool _validaProtocol(HttpRequest req) {
+    // get necessary data from the request
+    Uri uri = req.uri;
+    HttpHeaders headers = req.headers;
+    String method = req.method.toLowerCase();
+
+    // we only allow get method
+    if (method != 'get') {
+      return false;
+    }
+
+    // get connection values from the header
+    List coon = headers[HttpHeaders.CONNECTION];
+    if (coon.isEmpty) {
+      return false;
+    }
+
+    // Upgrade?
+    bool isUpgrade = false;
+    coon.forEach((f) {
+      if (f.toLowerCase() == 'upgrade') {
+        isUpgrade = true;
+      }
+    });
+
+    if (!isUpgrade) {
+      return false;
+    }
+
+    String upgrade = headers.value(HttpHeaders.UPGRADE);
+    if (upgrade.isEmpty) {
+      return false;
+    }
+    upgrade = upgrade.toLowerCase();
+    if (upgrade != 'websocket') {
+      return false;
+    }
+
+    return true;
   }
 
   /**

@@ -12,7 +12,7 @@ class Connexa {
   /**
    * Version.
    */
-  static const String version = '0.0.1';
+  static const String version = '0.1.0';
 
   /**
    * Attaches a IPv4 manager.
