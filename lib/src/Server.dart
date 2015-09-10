@@ -10,6 +10,24 @@ import 'package:connexa/src/Socket.dart';
 import 'package:uuid/uuid.dart';
 import 'package:connexa/src/transports/WebSocket.dart';
 import 'package:connexa/src/Transport.dart';
+import 'dart:convert';
+
+/**
+ * Protocol errors mappings.
+ */
+enum ProtocolErrors {
+  unknown_transport,
+  unknown_sid,
+  bad_handshake_method,
+  bad_request
+}
+
+Map<int, String> ProtocolErrorMessage = {
+  0: 'Transport unknown',
+  1: 'Session ID unknown',
+  2: 'Bad handshake method',
+  3: 'Bad request'
+};
 
 class Server extends Events {
 
@@ -49,6 +67,11 @@ class Server extends Events {
   Map<String, Object> _stores = {'paths': ['/socket.io']};
 
   /**
+   * Map with supported transports
+   */
+  Map<String, Function> _transports = {'websocket': WebSocketTransport};
+
+  /**
    * Constructor.
    */
   Server(HttpServer server, Map options) {
@@ -59,7 +82,8 @@ class Server extends Events {
       'pingTimeout' : 60000,
       'pingInterval': 2500,
       'debug': false,
-      'transports': ['websocket']
+      'transports': ['websocket'],
+      'allowRequest': false
     });
 
     // subscribe the default settings with the user options
@@ -69,7 +93,8 @@ class Server extends Events {
     if (_settings['debug'] == true) {
       Logger.root.level = Level.ALL;
       Logger.root.onRecord.listen((LogRecord rec) {
-        print('(${rec.loggerName}) ${rec.level.name}: ${rec.time}: ${rec.message}');
+        print('(${rec.loggerName}) ${rec.level.name}: ${rec.time}: ${rec
+            .message}');
       });
     }
 
@@ -91,6 +116,8 @@ class Server extends Events {
    * Attach a HTTPServer.
    */
   void attach(HttpServer server) {
+    // TODO: remove all listeners
+
     this._server = server;
     server.listen(this._handleRequest, onError: this._onError);
   }
@@ -108,23 +135,23 @@ class Server extends Events {
   void _handleRequest(HttpRequest req) {
     log.info('handling "${req.method}" http request "${req.uri}"');
 
-    // TODO: put this validations in a separated method
-    if (!this._hasSocket(req.uri.path)) {
-      return this._giveNiceReply(req);
-    } else if (!this._validaProtocol(req)) {
-      return this._denialRequest(req);
-    }
-
     // get query parameters
     Map query = req.uri.queryParameters;
 
-    // check the request has already a socket Id
-    if (query.containsKey('sid')) {
-      log.info('setting new request for existing client');
-      this.clients[query['sid']].transport.onRequest(req);
-    } else {
-      this.handshake(query['transport'], req);
-    }
+    // validate the request
+    this._verify(req, false, (ProtocolErrors err, bool success) {
+      if (!success) {
+        return this._sendErrorMessage(req, err);
+      }
+
+      // check if the request has already a socket Id
+      if (query.containsKey('sid')) {
+        log.info('settings new request for existing client');
+        this.clients[query['sid']].transport.onRequest(req);
+      } else {
+        this.handshake(query['transport'], req);
+      }
+    });
   }
 
   /**
@@ -133,6 +160,30 @@ class Server extends Events {
   bool _hasSocket(String path) {
     List<String> paths = this._stores['paths'];
     return paths.indexOf(path) != -1;
+  }
+
+  /**
+   * Sends an Connexa Error Message
+   */
+  void _sendErrorMessage(HttpRequest req, ProtocolErrors code) {
+    Map headers = { 'Content-Type': 'application/json'};
+
+    if (req.headers.value('origin') != null) {
+      headers['Access-Control-Allow-Credentials'] = 'true';
+      headers['Access-Control-Allow-Origin'] = req.headers.value('origin');
+    } else {
+      headers['Access-Control-Allow-Origin'] = '*';
+    }
+
+    req.response.statusCode = 400;
+    headers.forEach((k, v) {
+      req.response.headers.add(k, v);
+    });
+    req.response.write(JSON.encode({
+      'code': code.index,
+      'message': ProtocolErrorMessage[code.index]
+    }));
+    req.response.close();
   }
 
   /**
@@ -154,6 +205,43 @@ class Server extends Events {
     req.response.headers.add('Content-Type', 'text/html; charset=UTF-8');
     req.response.write('Bad Request: Not a websocket Request!');
     req.response.close();
+  }
+
+  void _verify(HttpRequest req, bool upgrade, Function fn) {
+    // get the query parameters
+    Map query = req.uri.queryParameters;
+
+    // transport check
+    if (!this._transports.containsKey(query['transport'])) {
+      log.warning('unknown transport "${query['transport']}"');
+      return fn(ProtocolErrors.unknown_transport, false);
+    }
+
+    // sid check
+    if (query.containsKey('sid')) {
+      var sid = query['sid'];
+
+      if (!this.clients.containsKey(sid)) {
+        return fn(ProtocolErrors.unknown_sid, false);
+      } else if (!upgrade &&
+          this.clients[sid].transport.name != query['transprot']) {
+        log.info('bad request: unexpected transport without upgrade');
+        return fn(ProtocolErrors.bad_request, false);
+      }
+    } else {
+      // handshake is GET only
+      if (req.method.toLowerCase() != 'get') {
+        fn(ProtocolErrors.bad_handshake_method, false);
+      }
+      if (!this._settings['allowRequest']) {
+        return fn(null, true);
+      } else if (this._settings['allowRequest'] == Function) {
+        Function func = this._settings['allowRequest'];
+        func(req, fn);
+      }
+    }
+
+    fn(null, true);
   }
 
   /**
@@ -217,6 +305,7 @@ class Server extends Events {
     log.info('handshaking client "${id}"');
 
     // TODO: Search if we can do this in a dynamic way
+    // TODO: Add support for polling
     Transport transport;
     if (transportName == 'websocket') {
       transport = new WebSocketTransport(req);
@@ -224,7 +313,6 @@ class Server extends Events {
 
     // get query params
     Map query = req.uri.queryParameters;
-
 
     // client supports binary?
     transport.supportsBinary = !query.containsKey('b64');

@@ -4,8 +4,8 @@ import 'package:connexa/server.dart';
 
 main() {
   // create a new Connexa instance
-  Connexa.listen(null, 8080, {'debug': true, 'pingTimeout': 3000}).then((
-      Server server) {
+  Connexa.listen(null, 8080, {'debug': true, 'pingTimeout': 3000})
+      .then((Server server) {
     server.on('connection', (Socket socket) {
       print("New client connected > " + socket.id);
 
