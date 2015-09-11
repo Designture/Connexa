@@ -56,7 +56,7 @@ class WebSocketTransport extends Transport {
 
     packets.forEach((Packet p) {
       String data = Parser.encode(p);
-      this.ws.send(p);
+      this.ws.send(data);
     });
 
     this.emit('flush');
@@ -102,9 +102,10 @@ class WebSocketTransport extends Transport {
 
     String queryS = '';
     bool isFirst = true;
-    query.forEach((k, v) {
+    query.forEach((String k, String v) {
       if (isFirst) {
         queryS += '${k}=${v}';
+        isFirst = false;
       } else {
         queryS += '&${k}=${v}';
       }
@@ -114,8 +115,7 @@ class WebSocketTransport extends Transport {
       queryS = '?${queryS}';
     }
 
-    return '${schema}://${this.settings['hostname']}${port}${this
-        .settings['path']}${query}';
+    return '${schema}://${settings['hostname']}${port}${settings['path']}${queryS}';
   }
 
   bool check() {

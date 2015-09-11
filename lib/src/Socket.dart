@@ -321,7 +321,9 @@ class Socket extends Events {
       packet.type = type;
 
       // add the packet data
-      packet['data'] = data;
+      if (data != null) {
+        packet.content.addAll(data);
+      }
 
       // export packetCreate event
       this.emit('packetCreate', packet);

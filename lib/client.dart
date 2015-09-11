@@ -7,6 +7,7 @@ import 'package:connexa/src/Parser.dart';
 import 'package:logging/logging.dart';
 import 'package:connexa/src/client/transport.dart';
 import 'package:connexa/src/client/transports/websocket_transport.dart';
+import 'dart:async';
 
 enum SocketStates {
   opening,
@@ -47,6 +48,9 @@ class Connexa extends Events {
    * List with the Packets to be sent.
    */
   List<Packet> _writeBuffer = new List();
+
+  Timer pingIntervalTimer = null;
+  Timer pingTimeoutTimer = null;
 
   /**
    * Constructor
@@ -101,6 +105,10 @@ class Connexa extends Events {
   Transport _createTransport(String transportName) {
     _log.info('creating transport "${transportName}');
 
+    // create settings clone
+    Map transportSettings = new Map();
+    transportSettings.addAll(this._settings);
+
     // create a query clone
     Map query = new Map();
     query.addAll(this._settings['query']);
@@ -116,8 +124,11 @@ class Connexa extends Events {
       query['sid'] = this._settings['sid'];
     }
 
+    // replace query
+    transportSettings['query'] = query;
+
     if (transportName == 'websocket') {
-      return new WebSocketTransport(this._settings);
+      return new WebSocketTransport(transportSettings);
     } else {
       throw new Exception('Invalid transport');
     }
@@ -175,9 +186,11 @@ class Connexa extends Events {
 
       switch (packet.type) {
         case PacketTypes.open:
-        // TODO: handshake
+          this._onHandshake(packet.content);
           break;
         case PacketTypes.pong:
+          this._setPing();
+          this.emit('pong');
           break;
         case PacketTypes.message:
           this.emit('data', packet.content);
@@ -210,6 +223,76 @@ class Connexa extends Events {
       this._transport.send(this._writeBuffer);
       this.emit('flush');
     }
+  }
+
+  /**
+   * Called upon handshake completion.
+   */
+  void _onHandshake(Map data) {
+    this.emit('handshake', data);
+    this._settings['id'] = data['sid'];
+    this._transport.settings['query']['sid'] = data['sid'];
+    this._settings['pingInterval'] = data['pingInterval'];
+    this._settings['pingTimeout'] = data['pingTimeout'];
+    this._onOpen();
+
+    // In case open handler closes socket
+    if (this._readyState == SocketStates.closed) {
+      return;
+    }
+
+    this._setPing();
+
+    // Prolong liveness of socket on heartbeat
+    // TODO: remove the _onHeartbeat from heartbeat listener and set again
+  }
+
+  /**
+   * Pings server every `pingInterval` and expects response within
+   * `pingTimeout` or closes connection.
+   */
+  void _setPing() {
+    this.pingIntervalTimer =
+    new Timer(new Duration(milliseconds: _settings['pingInterval']), () {
+      _log.info(
+          'writing ping packet - expecting pong within ${_settings['pingTimeout']}');
+      this._ping();
+      this._onHeartbeat(_settings['pingTimeout']);
+    });
+  }
+
+  /**
+   * Sends a ping packet.
+   */
+  void _ping() {
+    this._sendPacket(PacketTypes.ping, null, null, () {
+      this.emit('ping');
+    });
+  }
+
+  /**
+   * Resets ping timeout.
+   */
+  void _onHeartbeat(int timeout) {
+    // cancel timer
+    pingTimeoutTimer?.cancel();
+
+    // get the next duration
+    int duration = 0;
+    if (timeout != null) {
+      duration = timeout;
+    } else {
+      duration = _settings['pingInterval'] + _settings['pingTimeout'];
+    }
+
+    // create the next timer
+    pingTimeoutTimer = new Timer(new Duration(milliseconds: duration), () {
+      if (_readyState == SocketStates.closed) {
+        return;
+      }
+
+      this._onClose('ping timeout');
+    });
   }
 
   /**
