@@ -60,11 +60,11 @@ main() {
 <div class="highlight highlight-dart"><pre><span class="pl-k">import</span> <span class="pl-s">'package:connexa/connexa.dart'</span>;
 
 main() {
-  Connexa.connect(<span class="pl-s">'http://localhost:8080'</span>).then((socket) {
-    socket.<span class="pl-k">on</span>(<span class="pl-s">'news'</span>, (data) {
-      print(data);
-      socket.emit(<span class="pl-s">'my_event'</span>, {<span class="pl-s">'some'</span>: <span class="pl-s">'data'</span>});
-    })
+  Connexa connexa <span class="pl-k">=</span> <span class="pl-k">new</span> Connexa(<span class="pl-s">'ws://localhost:8080'</span>);
+
+  socket.<span class="pl-k">on</span>(<span class="pl-s">'news'</span>, (data) {
+    print(data);
+    socket.emit(<span class="pl-s">'my_event'</span>, {<span class="pl-s">'some'</span>: <span class="pl-s">'data'</span>});
   });
 }</pre></div>
 
