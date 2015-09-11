@@ -3,26 +3,21 @@ library connexa.parser;
 import 'dart:convert';
 import 'package:connexa/src/Packet.dart';
 
-/**
- * Message types enumeration.
- */
-enum MsgTypes {
-  connect,
-  disconnect,
-  event,
-  ack,
-  error
-}
-
 class Parser {
 
-  static String encode(Packet packet) {
+  /**
+   * Current protocol version.
+   */
+  static final int protocol = 3;
+
+  static String encode(Packet packet,
+      [bool supportsBinary = false, bool utf8encode = false]) {
     String encoded = '';
 
     // add package type
     encoded += packet.type.index.toString();
 
-    // encode packet content if exists
+    // encode packet content if exists (data fragment is optional)
     if (!packet.isEmpty) {
       encoded += JSON.encode(packet.content);
     }
@@ -64,13 +59,6 @@ class Parser {
     }
 
     return packet;
-  }
-
-  static Map error() {
-    return {
-      'type': MsgTypes.error,
-      'data': 'parser error'
-    };
   }
 
 }
