@@ -9,6 +9,8 @@ main() {
     server.on('connection', (Socket socket) {
       print("New client connected > " + socket.id);
 
+      socket.emit('new message', 'something');
+
       socket.on('close', (_) {
         print('Client socket closed');
       });
