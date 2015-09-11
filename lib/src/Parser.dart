@@ -18,9 +18,7 @@ class Parser {
     encoded += packet.type.index.toString();
 
     // encode packet content if exists (data fragment is optional)
-    if (!packet.isEmpty) {
-      encoded += JSON.encode(packet.content);
-    }
+    encoded += JSON.encode(packet.content);
 
     // returns the packet encoded
     return encoded;

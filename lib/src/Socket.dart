@@ -89,6 +89,7 @@ class Socket extends Events {
     // TODO: add the available upgrades
     this.sendPacket(PacketTypes.open, {
       'sid': this._id,
+      'upgrades': [],
       'pingInterval': this._server.pingInterval,
       'pingTimeout': this._server.pingTimeout
     });

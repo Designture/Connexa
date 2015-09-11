@@ -52,6 +52,12 @@ class Connexa extends Events {
   Timer pingIntervalTimer = null;
   Timer pingTimeoutTimer = null;
 
+  /// EVENTS
+
+  StreamSubscription _heartbeatEvent;
+
+  ///
+
   /**
    * Constructor
    */
@@ -63,7 +69,8 @@ class Connexa extends Events {
       'agent': false,
       'path': '/engine.io',
       'hostname': 'localhost',
-      'debug': false
+      'debug': false,
+      'prevBufferLen': 0
     };
 
     // merge the user options
@@ -166,7 +173,7 @@ class Connexa extends Events {
   void _onOpen() {
     _log.info('socket open');
     this._readyState = SocketStates.open;
-    this.emit('open');
+    this.emit('open', this);
     this._flush();
   }
 
@@ -182,7 +189,7 @@ class Connexa extends Events {
       this.emit('packet', packet);
 
       // Socket is live - any packet counts
-      this.emit('heartbeat');
+      this.emit('heartbeat', null);
 
       switch (packet.type) {
         case PacketTypes.open:
@@ -190,7 +197,7 @@ class Connexa extends Events {
           break;
         case PacketTypes.pong:
           this._setPing();
-          this.emit('pong');
+          this.emit('pong', this);
           break;
         case PacketTypes.message:
           this.emit('data', packet.content);
@@ -203,8 +210,19 @@ class Connexa extends Events {
     }
   }
 
+  /**
+   * Called on `drain` event.
+   */
   void _onDrain() {
-// TODO
+    this._writeBuffer.removeRange(0, this._settings['prevBufferLen']);
+
+    this._settings['prevBufferLen'] = 0;
+
+    if (this._writeBuffer.isEmpty) {
+      this.emit('drain', this);
+    } else {
+      this._flush();
+    }
   }
 
   void _onError(e) {
@@ -215,13 +233,20 @@ class Connexa extends Events {
 // TODO
   }
 
+  /**
+   * Flush write buffer.
+   */
   void _flush() {
     if (this._readyState != SocketStates.closed &&
         this._transport.settings['writable'] &&
         this._writeBuffer.isNotEmpty) {
       _log.info('flushing ${this._writeBuffer.length} packet in socket');
       this._transport.send(this._writeBuffer);
-      this.emit('flush');
+      // keep track of current length of writeBuffer,
+      // we need to remove the sent elements from writeBuffer
+      // on `drain` event
+      this._settings['prevBufferLen'] = this._writeBuffer.length;
+      this.emit('flush', this);
     }
   }
 
@@ -244,7 +269,8 @@ class Connexa extends Events {
     this._setPing();
 
     // Prolong liveness of socket on heartbeat
-    // TODO: remove the _onHeartbeat from heartbeat listener and set again
+    _heartbeatEvent?.cancel();
+    _heartbeatEvent = this.on('heartbeat', this._onHeartbeat);
   }
 
   /**
@@ -265,8 +291,8 @@ class Connexa extends Events {
    * Sends a ping packet.
    */
   void _ping() {
-    this._sendPacket(PacketTypes.ping, null, null, () {
-      this.emit('ping');
+    this._sendPacket(PacketTypes.ping, null, null, (_) {
+      this.emit('ping', this);
     });
   }
 
