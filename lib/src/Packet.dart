@@ -41,6 +41,10 @@ class Packet implements Map<String, Object> {
    */
   Map get content => _content;
 
+  Packet([PacketTypes this.type = null, Object content = const {}]) {
+    this.addAll(content);
+  }
+
   /**
    * Returns whether this map contains the given [value].
    */

@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import 'package:connexa/src/transports/WebSocket.dart';
 import 'package:connexa/src/Transport.dart';
 import 'dart:convert';
+import 'dart:mirrors';
 
 /**
  * Protocol errors mappings.
@@ -59,17 +60,12 @@ class Server extends Events {
   /**
    * Map with all clients's sockets.
    */
-  Map<String, WebSocket> sockets = new Map();
+  Map<Socket, WebSocket> sockets = new Map();
 
   /**
    * Map to store some runtime data.
    */
-  Map<String, Object> _stores = {'paths': ['/socket.io']};
-
-  /**
-   * Map with supported transports
-   */
-  Map<String, Function> _transports = {'websocket': WebSocketTransport};
+  Map<String, Object> _stores = {'paths': ['/connexa']};
 
   /**
    * Constructor.
@@ -81,8 +77,8 @@ class Server extends Events {
     _settings.addAll({
       'pingTimeout' : 60000,
       'pingInterval': 2500,
+      'upgradeTimeout': 10000,
       'debug': false,
-      'transports': ['websocket'],
       'allowRequest': false
     });
 
@@ -112,13 +108,18 @@ class Server extends Events {
    */
   int get pingInterval => _settings['pingInterval'];
 
+  int get upgradeTimeout => _settings['upgradeTimeout'];
+
   /**
    * Attach a HTTPServer.
    */
   void attach(HttpServer server) {
     // TODO: remove all listeners
 
+    // save the HttpServer instance
     this._server = server;
+
+    // start to listen the HttpRequests
     server.listen(this._handleRequest, onError: this._onError);
   }
 
@@ -130,13 +131,20 @@ class Server extends Events {
   }
 
   /**
+   * Get query map from the HttpRequest.
+   */
+  Map _queryFromRequest(HttpRequest req) {
+    return req.uri.queryParameters;
+  }
+
+  /**
    * Handle Http requests
    */
   void _handleRequest(HttpRequest req) {
     log.info('handling "${req.method}" http request "${req.uri}"');
 
     // get query parameters
-    Map query = req.uri.queryParameters;
+    Map query = _queryFromRequest(req);
 
     // validate the request
     this._verify(req, false, (ProtocolErrors err, bool success) {
@@ -212,7 +220,7 @@ class Server extends Events {
     Map query = req.uri.queryParameters;
 
     // transport check
-    if (!this._transports.containsKey(query['transport'])) {
+    if (query['transport'] != 'websocket') {
       log.warning('unknown transport "${query['transport']}"');
       return fn(ProtocolErrors.unknown_transport, false);
     }
@@ -304,36 +312,40 @@ class Server extends Events {
 
     log.info('handshaking client "${id}"');
 
-    // TODO: Search if we can do this in a dynamic way
-    // TODO: Add support for polling
     Transport transport;
     if (transportName == 'websocket') {
       transport = new WebSocketTransport(req);
+    } else {
+      log.warning(
+          'client is requesting a none supported transport "${transportName}"');
     }
 
-    // get query params
-    Map query = req.uri.queryParameters;
+    // only end the configuration when the transport are open
+    transport.once('open', (_) {
+      // get query params
+      Map query = req.uri.queryParameters;
 
-    // client supports binary?
-    transport.supportsBinary = !query.containsKey('b64');
+      // client supports binary?
+      transport.supportsBinary = !query.containsKey('b64');
 
-    // create a new Socket instance
-    Socket socket = new Socket(id, this, transport, req);
+      // create a new Socket instance
+      Socket socket = new Socket(id, this, transport, req);
 
-    // TODO: add support to cookies
+      // TODO: add support to cookies
 
-    // set the request on transport
-    transport.onRequest(req);
+      // set the request on transport
+      transport.onRequest(req);
 
-    // save client instance
-    this.clients[id] = socket;
+      // save client instance
+      this.clients[id] = socket;
 
-    // define action on socket close
-    socket.on('close', (_) {
-      this.clients.remove(id);
+      // define action on socket close
+      socket.on('close', (_) {
+        this.clients.remove(id);
+      });
+
+      this.emit('connection', socket);
     });
-
-    this.emit('connection', socket);
   }
 
   /**
@@ -343,16 +355,5 @@ class Server extends Events {
     log.info('closing all open clients');
     this.clients.forEach((String k, Socket s) => s.close());
     return this;
-  }
-
-  /**
-   * Send a packet to a client.
-   */
-  void sendToClient(String id, String encodedPacket) {
-    // check if the client exists
-    if (this.clients.containsKey(id)) {
-      // send the packet
-      this.sockets[id].add(encodedPacket);
-    }
   }
 }

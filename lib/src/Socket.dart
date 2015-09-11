@@ -48,6 +48,10 @@ class Socket extends Events {
 
   Timer _checkIntervalTimer = null;
   Timer _pingTimeoutTimer = null;
+  Timer _upgradeTimeoutTimer = null;
+
+  bool upgrading = false;
+  bool upgraded = false;
 
   /**
    * Logger
@@ -171,8 +175,92 @@ class Socket extends Events {
   /**
    * Upgrades socket to the given transport.
    */
-  void maybeUpgrade(Transport) {
-    // TODO
+  void maybeUpgrade(Transport transport) {
+    log.info('might upgrade socket transport from "${this.transport
+        .name}" to "${transport.name}"');
+
+    this.upgrading = true;
+
+    void cleanup() {
+      this.upgrading = false;
+
+      this._checkIntervalTimer?.cancel();
+      this._checkIntervalTimer = null;
+
+      this._upgradeTimeoutTimer?.cancel();
+      this._upgradeTimeoutTimer = null;
+
+      // TODO: remove listeners
+    }
+
+    // we force a polling cycle to ensure a fast upgrade
+    void check() {
+      if (this.transport.name == 'polling' && this.transport.writable) {
+        log.info('writing a noop packet to polling for fast upgrade');
+        this.transport.send(
+            new Packet(PacketTypes.noop, {'options': {'compress': true}}));
+      }
+    }
+
+    void onPacket(Packet packet) {
+      if (packet.type == PacketTypes.ping && packet.containsKey('probe')) {
+        Packet responseP = new Packet();
+        responseP.type = PacketTypes.pong;
+        responseP.addAll({'data': 'probe', 'options': {'compress': true}});
+        transport.send(responseP);
+        _checkIntervalTimer?.cancel();
+        _checkIntervalTimer = new Timer(new Duration(milliseconds: 100), check);
+      } else if (packet.type == PacketTypes.upgrade &&
+          _readyState != SocketStates.closed) {
+        log.info('got upgrade packet - upgrading');
+        cleanup();
+        this.upgraded = true;
+        this.clearTransport();
+        this.setTransport(transport);
+        this.emit('upgrade', transport);
+        this.setPingTimeout();
+        this.flush();
+        if (_readyState == SocketStates.closing) {
+          transport.close(() {
+            this.onClose('forced close');
+          });
+        }
+      } else {
+        cleanup();
+        transport.close();
+      }
+    }
+
+    void onError(err) {
+      log.info('client did not complete upgrade - ${err}');
+      cleanup();
+      transport.close();
+      transport = null;
+    }
+
+    void onTransportClose() {
+      onError('trabsport closed');
+    }
+
+    void onClose() {
+      onError('socket closed');
+    }
+
+    transport.on('packet', onPacket);
+    transport.once('close', onTransportClose);
+    transport.once('error', onError);
+
+    this.once('close', onClose);
+
+    // set transport upgrade timer
+    Duration duration = new Duration(milliseconds: this._server.upgradeTimeout);
+    this._upgradeTimeoutTimer = new Timer(duration, () {
+      log.info('client did not complete upgrade - closing transport');
+      cleanup();
+      if (transport.readyState == TransportStates.open) {
+        transport.close();
+      }
+    });
   }
 
   /**
@@ -258,9 +346,9 @@ class Socket extends Events {
       this.emit('flush', this._writeBuffer);
       this._server.emit('flush', new FlushEvent(this, this._writeBuffer));
       List<Packet> wbuf = this._writeBuffer;
-      this._writeBuffer.clear();
+      this._writeBuffer = new List();
       // TODO: send callback
-      this._packetsFn.clear();
+      this._packetsFn = new List();
       this.transport.send(wbuf);
       this.emit('drain');
       this._server.emit('drain', this);

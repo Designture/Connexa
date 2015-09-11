@@ -55,6 +55,8 @@ abstract class Transport extends Events {
     this._readyState = TransportStates.open;
   }
 
+  TransportStates get readyState => _readyState;
+
   /**
    * Get for the logger.
    */

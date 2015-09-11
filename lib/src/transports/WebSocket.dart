@@ -36,14 +36,18 @@ class WebSocketTransport extends Transport {
       this._socket = socket;
       this.writable = true;
 
+      // handle the socket errors
       this._socket.handleError(() {
         this.onClose();
       });
 
-      // start listen the socket;
+      // start listen the web socket
       socket.listen((packet) {
         this.onData(packet);
       });
+
+      // informs those who are listening that the transport is now open
+      this.emit('open', this);
     }).catchError((Exception e) {
       this.onError('Can\'t conenct with the socket.', e.toString());
     });
@@ -65,9 +69,9 @@ class WebSocketTransport extends Transport {
   /**
    * Writes a packet payload.
    */
-  void send(dynamic packet) {
-    if (packet is List) {
-      packet.forEach((Packet p) {
+  void send(List<Packet> packets) {
+    if (packets.isNotEmpty) {
+      packets.forEach((Packet p) {
         // encode packet
         String encodedPacket = Parser.encode(p);
 
@@ -75,8 +79,6 @@ class WebSocketTransport extends Transport {
         log.info('writing "${encodedPacket}"');
         this._socket.add(encodedPacket);
       });
-    } else if (packet is Packet) {
-
     } else {
       throw new Exception('Invalid method call!');
     }
