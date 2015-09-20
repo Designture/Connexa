@@ -5,6 +5,7 @@ import '../common/Parser.dart';
 import 'package:eventus/eventus.dart';
 import 'package:logging/logging.dart';
 import 'package:connexa/src/common/Packet.dart';
+import 'package:connexa/src/server/TransportException.dart';
 
 enum TransportStates {
   open,
@@ -90,12 +91,10 @@ abstract class Transport extends Eventus {
    * @param {Object} error description
    */
   void onError(msg, desc) {
-    // FIXME: (#issue 9) We need to implement our EventEmitter
-    if (!this.events.get('error').isEmpty()) {
-      Error err = new Error();
-      err.msg = msg;
-      err.type = 'TransportError';
-      err.description = desc;
+    if (this
+        .listeners('error')
+        .isNotEmpty) {
+      TransportException err = new TransportException(msg, desc);
       this.emit('error', err);
     }
   }
