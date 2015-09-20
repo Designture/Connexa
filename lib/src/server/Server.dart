@@ -107,6 +107,11 @@ class Server extends Eventus {
   int get upgradeTimeout => _settings['upgradeTimeout'];
 
   /**
+   * fixme: hard coded
+   */
+  List get transports => ['websocket'];
+
+  /**
    * Attach a HTTPServer.
    */
   void attach(HttpServer server) {
@@ -317,7 +322,7 @@ class Server extends Eventus {
     }
 
     // only end the configuration when the transport are open
-    transport.once('open', (_) {
+    transport.once('open', () {
       // get query params
       Map query = req.uri.queryParameters;
 
@@ -351,5 +356,9 @@ class Server extends Eventus {
     log.info('closing all open clients');
     this.clients.forEach((String k, Socket s) => s.close());
     return this;
+  }
+
+  List upgrades(String name) {
+    return [];
   }
 }

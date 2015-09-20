@@ -56,7 +56,7 @@ class WebSocketTransport extends Transport {
       });
 
       // informs those who are listening that the transport is now open
-      this.emit('open', this);
+      this.emit('open');
     }).catchError((Exception e) {
       this.onError('Can\'t conenct with the socket.', e.toString());
     });

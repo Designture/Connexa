@@ -17,18 +17,6 @@ enum SocketStates {
 }
 
 /**
- * Class to be passed on the flush event.
- */
-class FlushEvent {
-
-  Socket socket;
-  List<Packet> writeBuffer;
-
-  FlushEvent(this.socket, this.writeBuffer);
-
-}
-
-/**
  * Client class.
  *
  * @api private
@@ -43,7 +31,7 @@ class Socket extends Eventus {
 
   List<Packet> _writeBuffer = new List();
   List<Function> _packetsFn = new List();
-  List<Function> _sendCallbackFn = new List();
+  List<Object> _sentCallbackFn = new List();
 
   Timer _checkIntervalTimer = null;
   Timer _pingTimeoutTimer = null;
@@ -84,16 +72,14 @@ class Socket extends Eventus {
 
     // send an 'open' packet
     this.transport.sid = this._id;
-
-    // TODO: add the available upgrades
     this.sendPacket(PacketTypes.open, {
       'sid': this._id,
-      'upgrades': [],
+      'upgrades': this.getAvailableUpgrades(),
       'pingInterval': this._server.pingInterval,
       'pingTimeout': this._server.pingTimeout
     });
 
-    this.emit('open', null);
+    this.emit('open');
     this.setPingTimeout();
   }
 
@@ -115,18 +101,16 @@ class Socket extends Eventus {
       switch (packet.type) {
         case PacketTypes.ping:
           this.sendPacket(PacketTypes.pong);
-          this.emit('heartbeat', null);
+          this.emit('heartbeat');
           break;
-        case PacketTypes.close:
+        case PacketTypes.message:
+          this.emit('data', packet.content);
+          this.emit('message', packet.content);
+          break;
+        default:
           this.transport.close();
           this.onClose('parse error');
           break;
-        case PacketTypes.message:
-          this.emit('data', packet['data']);
-          this.emit('message', packet['data']);
-          break;
-        default:
-        // Don't do nothing
       }
     } else {
       log.info('packet received with closed socket');
@@ -135,6 +119,8 @@ class Socket extends Eventus {
 
   /**
    * Called upon transport error.
+   *
+   * @param Exception     Exception object
    */
   void onError(err) {
     log.info('transport error');
@@ -161,6 +147,8 @@ class Socket extends Eventus {
 
   /**
    * Attaches handlers for the given transport.
+   *
+   * @param Transport     transport
    */
   void setTransport(Transport transport) {
     this.transport = transport;
@@ -169,11 +157,13 @@ class Socket extends Eventus {
     this.transport.on('drain', this.flush);
     this.transport.once('close', this.onClose);
     // this function will manage packet events (also message callbacks)
-    //this._setupSendCallback();
+    this._setupSendCallback();
   }
 
   /**
    * Upgrades socket to the given transport.
+   *
+   * @param Transport     transport
    */
   void maybeUpgrade(Transport transport) {
     log.info('might upgrade socket transport from "${this.transport
@@ -268,7 +258,7 @@ class Socket extends Eventus {
    */
   void clearTransport() {
     // silence further transport errors and prevent uncaught exceptions
-    this.transport.on('error', (_) {
+    this.transport.on('error', () {
       log.info('error triggered by discarted transport');
     });
 
@@ -284,19 +274,42 @@ class Socket extends Eventus {
    * Possible reasons: `ping timeout`, `client error`, `parse error`,
    * `transport error`, `server close`, `transport close`
    */
-  void onClose(String reason, [String description]) {
+  void onClose([String reason = 'forced close', String description]) {
     if (this._readyState != SocketStates.closed) {
       this._pingTimeoutTimer?.cancel();
       this._checkIntervalTimer?.cancel();
       this._checkIntervalTimer = null;
-      // TODO: stop upgrade timeout timer (but first we need to implement it)
+      this._upgradeTimeoutTimer?.cancel();
+      this._packetsFn.clear();
+      this._sentCallbackFn.clear();
       this.clearTransport();
       this._readyState = SocketStates.closed;
-      this.emit('close', {
-        'reason': reason,
-        'description': description
-      });
+      this.emit('close', reason, description);
     }
+  }
+
+  /**
+   * Setup and manage send callback
+   */
+  void _setupSendCallback() {
+    // the message was sent successfully, execute the callback
+    this.transport.on('drain', () {
+      if (this._sentCallbackFn.isNotEmpty) {
+        Object seqFn = this._sentCallbackFn.removeAt(0);
+        if (seqFn is Function) {
+          log.info('executing send callback');
+          seqFn(this.transport);
+        } else if (seqFn is List) {
+          log.info('executing batch send callback');
+
+          seqFn.forEach((Object obj) {
+            if (obj is Function) {
+              obj(this.transport);
+            }
+          });
+        }
+      }
+    });
   }
 
   /**
@@ -310,15 +323,12 @@ class Socket extends Eventus {
    * Send a message.
    */
   void sendPacket(PacketTypes type,
-      [Object data, Map options, Function callback]) {
+      [Object data, Map options = const {}, Function callback]) {
     if (this._readyState != SocketStates.closing) {
       log.info('sending packet "${type} (${data})"');
 
       // build the packet
-      Packet packet = new Packet();
-
-      // add the packet type
-      packet.type = type;
+      Packet packet = new Packet(type);
 
       // add the packet data
       if (data != null) {
@@ -341,20 +351,37 @@ class Socket extends Eventus {
   /**
    * Attempts to flush the packets buffer.
    */
-  void flush([_]) {
+  void flush() {
     if (this._readyState != SocketStates.closed && this.transport.writable &&
         !this._writeBuffer.isEmpty) {
       log.info('flusing buffer to transport');
       this.emit('flush', this._writeBuffer);
-      this._server.emit('flush', new FlushEvent(this, this._writeBuffer));
+      this._server.emit('flush', this, this._writeBuffer);
       List<Packet> wbuf = this._writeBuffer;
       this._writeBuffer = new List();
-      // TODO: send callback
+      if (!this.transport.supportsFraming) {
+        this._sentCallbackFn.add(this._packetsFn);
+      }
       this._packetsFn = new List();
       this.transport.send(wbuf);
       this.emit('drain');
       this._server.emit('drain', this);
     }
+  }
+
+  /**
+   * Get available upgrades for this socket.
+   */
+  List getAvailableUpgrades() {
+    List availableUpgrades = new List();
+    List allUpgrades = this._server.upgrades(this.transport.name);
+    allUpgrades.forEach((String upg) {
+      if (this._server.transports.contains(upg)) {
+        availableUpgrades.add(upg);
+      }
+    });
+
+    return availableUpgrades;
   }
 
   /**
