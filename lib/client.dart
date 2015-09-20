@@ -1,8 +1,8 @@
 library connexa.client;
 
 import 'dart:html';
-import 'package:connexa/src/Packet.dart';
-import 'package:connexa/src/Parser.dart';
+import 'package:connexa/src/common/Packet.dart';
+import 'package:connexa/src/common/Parser.dart';
 import 'package:logging/logging.dart';
 import 'package:connexa/src/client/transport.dart';
 import 'package:connexa/src/client/transports/websocket_transport.dart';

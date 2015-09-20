@@ -1,10 +1,10 @@
 library connexa.transport;
 
 import 'dart:io';
-import 'Parser.dart';
+import '../common/Parser.dart';
 import 'package:eventus/eventus.dart';
 import 'package:logging/logging.dart';
-import 'package:connexa/src/Packet.dart';
+import 'package:connexa/src/common/Packet.dart';
 
 enum TransportStates {
   open,

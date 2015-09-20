@@ -1,10 +1,10 @@
 library connexa.namespace;
 
-import 'package:connexa/src/Server.dart';
-import 'package:connexa/src/Socket.dart';
+import 'package:connexa/src/server/Server.dart';
+import 'package:connexa/src/server/Socket.dart';
 import 'package:logging/logging.dart';
-import 'package:connexa/src/Packet.dart';
-import 'package:connexa/src/Parser.dart';
+import 'package:connexa/src/common/Packet.dart';
+import 'package:connexa/src/common/Parser.dart';
 import 'package:eventus/eventus.dart';
 
 class SocketNamespace extends Eventus {
