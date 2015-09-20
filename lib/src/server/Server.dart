@@ -29,11 +29,6 @@ Map<int, String> ProtocolErrorMessage = {
 class Server extends Eventus {
 
   /**
-   * Map with all namespaces
-   */
-  Map _namespaces = new Map();
-
-  /**
    * HttpServer instance.
    */
   HttpServer _server;
@@ -75,7 +70,8 @@ class Server extends Eventus {
       'pingInterval': 2500,
       'upgradeTimeout': 10000,
       'debug': false,
-      'allowRequest': false
+      'allowRequest': false,
+      'allowUpgrades': false
     });
 
     // subscribe the default settings with the user options
@@ -115,7 +111,8 @@ class Server extends Eventus {
    * Attach a HTTPServer.
    */
   void attach(HttpServer server) {
-    // TODO: remove all listeners
+    // remove all listeners
+    this.clearListeners();
 
     // save the HttpServer instance
     this._server = server;
@@ -164,14 +161,6 @@ class Server extends Eventus {
   }
 
   /**
-   * Check if the requested path has a socket.
-   */
-  bool _hasSocket(String path) {
-    List<String> paths = this._stores['paths'];
-    return paths.indexOf(path) != -1;
-  }
-
-  /**
    * Sends an Connexa Error Message
    */
   void _sendErrorMessage(HttpRequest req, ProtocolErrors code) {
@@ -196,26 +185,8 @@ class Server extends Eventus {
   }
 
   /**
-   * Give a nice default message to the user.
+   * Verifies a request.
    */
-  void _giveNiceReply(HttpRequest req) {
-    req.response.statusCode = 200;
-    req.response.headers.add('Content-Type', 'text/html; charset=UTF-8');
-    req.response.write(
-        'Welcome to Connexa supported by <a target="_blank" href="https://designture.net">Designture</a>!');
-    req.response.close();
-  }
-
-  /**
-   * Error response for an invalid request.
-   */
-  void _denialRequest(HttpRequest req) {
-    req.response.statusCode = 500;
-    req.response.headers.add('Content-Type', 'text/html; charset=UTF-8');
-    req.response.write('Bad Request: Not a websocket Request!');
-    req.response.close();
-  }
-
   void _verify(HttpRequest req, bool upgrade, Function fn) {
     // get the query parameters
     Map query = req.uri.queryParameters;
@@ -251,50 +222,6 @@ class Server extends Eventus {
     }
 
     fn(null, true);
-  }
-
-  /**
-   * Check if a alid protocol.
-   */
-  bool _validaProtocol(HttpRequest req) {
-    // get necessary data from the request
-    Uri uri = req.uri;
-    HttpHeaders headers = req.headers;
-    String method = req.method.toLowerCase();
-
-    // we only allow get method
-    if (method != 'get') {
-      return false;
-    }
-
-    // get connection values from the header
-    List coon = headers[HttpHeaders.CONNECTION];
-    if (coon.isEmpty) {
-      return false;
-    }
-
-    // Upgrade?
-    bool isUpgrade = false;
-    coon.forEach((f) {
-      if (f.toLowerCase() == 'upgrade') {
-        isUpgrade = true;
-      }
-    });
-
-    if (!isUpgrade) {
-      return false;
-    }
-
-    String upgrade = headers.value(HttpHeaders.UPGRADE);
-    if (upgrade.isEmpty) {
-      return false;
-    }
-    upgrade = upgrade.toLowerCase();
-    if (upgrade != 'websocket') {
-      return false;
-    }
-
-    return true;
   }
 
   /**
@@ -350,7 +277,7 @@ class Server extends Eventus {
   }
 
   /**
-   * Close all open clients.
+   * Close all clients.
    */
   Server close() {
     log.info('closing all open clients');
@@ -358,7 +285,15 @@ class Server extends Eventus {
     return this;
   }
 
-  List upgrades(String name) {
+  /**
+   * Returns a list of available transports for upgrade given a certain transport.
+   */
+  List upgrades(String transport) {
+    if (!this._settings['allowUpgrades']) {
+      return [];
+    }
+
+    // todo: go to the requested transport class check `upgradesTo` field
     return [];
   }
 }
