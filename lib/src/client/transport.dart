@@ -1,8 +1,8 @@
 library connexa.client.transport;
 
-import 'package:events/events.dart';
 import 'package:connexa/src/Packet.dart';
 import 'package:connexa/src/Parser.dart';
+import 'package:eventus/eventus.dart';
 
 enum TransportStates {
   opening,
@@ -10,7 +10,7 @@ enum TransportStates {
   closed
 }
 
-abstract class Transport extends Events {
+abstract class Transport extends Eventus {
 
   TransportStates _readyState = TransportStates.closed;
   String name = '';
@@ -71,7 +71,7 @@ abstract class Transport extends Events {
   void onOpen() {
     this._readyState = TransportStates.open;
     this.settings['writable'] = true;
-    this.emit('open', this);
+    this.emit('open');
   }
 
   /**
@@ -94,7 +94,7 @@ abstract class Transport extends Events {
    */
   void onClose() {
     this._readyState = TransportStates.closed;
-    this.emit('close', this);
+    this.emit('close');
   }
 
   void doOpen();

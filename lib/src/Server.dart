@@ -2,16 +2,12 @@ library connexa.server;
 
 import 'dart:io' hide Socket;
 import 'package:logging/logging.dart';
-import 'package:events/events.dart';
-import 'package:route/server.dart';
-import 'package:connexa/src/Parser.dart';
-import 'package:connexa/src/Packet.dart';
+import 'package:eventus/eventus.dart';
 import 'package:connexa/src/Socket.dart';
 import 'package:uuid/uuid.dart';
 import 'package:connexa/src/transports/WebSocket.dart';
 import 'package:connexa/src/Transport.dart';
 import 'dart:convert';
-import 'dart:mirrors';
 
 /**
  * Protocol errors mappings.
@@ -30,7 +26,7 @@ Map<int, String> ProtocolErrorMessage = {
   3: 'Bad request'
 };
 
-class Server extends Events {
+class Server extends Eventus {
 
   /**
    * Map with all namespaces

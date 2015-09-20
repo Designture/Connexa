@@ -3,16 +3,14 @@ library connexa.example;
 import 'package:connexa/server.dart';
 
 main() {
-  // create a new Connexa instance
-  Connexa.listen(null, 8080, {'debug': true, 'pingTimeout': 3000})
-      .then((Server server) {
+  Connexa.listen(null, 8080, {'debug': true}).then((Server server) {
     server.on('connection', (Socket socket) {
-      print("New client connected > " + socket.id);
+      socket.on('chat message', (msg) {
+        server.emit('chat message', msg);
+      });
 
-      socket.emit('new message', 'something');
-
-      socket.on('close', (_) {
-        print('Client socket closed');
+      socket.on('disconnect', (_) {
+        server.emit('user disconnected');
       });
     });
   });

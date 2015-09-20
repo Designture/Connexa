@@ -1,13 +1,13 @@
 library connexa.client;
 
-import 'package:events/events.dart';
-import 'dart:html' hide Events;
+import 'dart:html';
 import 'package:connexa/src/Packet.dart';
 import 'package:connexa/src/Parser.dart';
 import 'package:logging/logging.dart';
 import 'package:connexa/src/client/transport.dart';
 import 'package:connexa/src/client/transports/websocket_transport.dart';
 import 'dart:async';
+import 'package:eventus/eventus.dart';
 
 enum SocketStates {
   opening,
@@ -17,7 +17,7 @@ enum SocketStates {
   closing
 }
 
-class Connexa extends Events {
+class Connexa extends Eventus {
 
   /**
    * WebSocket instance
@@ -48,15 +48,10 @@ class Connexa extends Events {
    * List with the Packets to be sent.
    */
   List<Packet> _writeBuffer = new List();
+  int _prevBufferLen = 0;
 
-  Timer pingIntervalTimer = null;
-  Timer pingTimeoutTimer = null;
-
-  /// EVENTS
-
-  StreamSubscription _heartbeatEvent;
-
-  ///
+  Timer _pingIntervalTimer = null;
+  Timer _pingTimeoutTimer = null;
 
   /**
    * Constructor
@@ -69,8 +64,7 @@ class Connexa extends Events {
       'agent': false,
       'path': '/engine.io',
       'hostname': 'localhost',
-      'debug': false,
-      'prevBufferLen': 0
+      'debug': false
     };
 
     // merge the user options
@@ -156,13 +150,13 @@ class Connexa extends Events {
     this._transport = transport;
 
     // set up transport listeners
-    this._transport..on('drain', (_) {
+    this._transport..on('drain', () {
       this._onDrain();
     })..on('packet', (Packet packet) {
       this._onPacket(packet);
     })..on('error', (e) {
       this._onError(e);
-    })..on('close', (_) {
+    })..on('close', () {
       this._onClose('transport close');
     });
   }
@@ -173,7 +167,7 @@ class Connexa extends Events {
   void _onOpen() {
     _log.info('socket open');
     this._readyState = SocketStates.open;
-    this.emit('open', this);
+    this.emit('open');
     this._flush();
   }
 
@@ -189,7 +183,7 @@ class Connexa extends Events {
       this.emit('packet', packet);
 
       // Socket is live - any packet counts
-      this.emit('heartbeat', null);
+      this.emit('heartbeat');
 
       switch (packet.type) {
         case PacketTypes.open:
@@ -197,7 +191,7 @@ class Connexa extends Events {
           break;
         case PacketTypes.pong:
           this._setPing();
-          this.emit('pong', this);
+          this.emit('pong');
           break;
         case PacketTypes.message:
           this.emit('data', packet.content);
@@ -214,23 +208,61 @@ class Connexa extends Events {
    * Called on `drain` event.
    */
   void _onDrain() {
-    this._writeBuffer.removeRange(0, this._settings['prevBufferLen']);
+    this._writeBuffer.removeRange(0, this._prevBufferLen);
 
-    this._settings['prevBufferLen'] = 0;
+    this._prevBufferLen = 0;
 
     if (this._writeBuffer.isEmpty) {
-      this.emit('drain', this);
+      this.emit('drain');
     } else {
       this._flush();
     }
   }
 
-  void _onError(e) {
-// TODO
+  /**
+   * Called upon transport error.
+   */
+  void _onError(err) {
+    _log.info('socket error ${err}');
+    this.emit('error', err);
+    this._onClose('transport error', err);
   }
 
-  void _onClose(String reason) {
-// TODO
+  /**
+   * Called upon transport close.
+   */
+  void _onClose(String reason, [String desc = '']) {
+    if (this._readyState == SocketStates.opening ||
+        this._readyState == SocketStates.open ||
+        this._readyState == SocketStates.closing) {
+      // clear timmers
+      this._pingIntervalTimer?.cancel();
+      this._pingTimeoutTimer?.cancel();
+
+      // stop event from firing again for transport
+      // TODO: remove all listener 'close' on transport
+
+      // ensure transport won't stay open
+      this._transport.close();
+
+      // ignore further transport communication
+      // TODO: remove all listeners from transport
+
+      // set ready state
+      this._readyState = SocketStates.closed;
+
+      // clear session id
+      this._settings['sid'] = null;
+
+      // emit close event
+      // TODO: add desc like thirst parameter
+      this.emit('close', reason);
+
+      // clean buffer after, so users can still
+      // grab the buffer on 'close' event
+      this._writeBuffer.clear();
+      this._prevBufferLen = 0;
+    }
   }
 
   /**
@@ -245,8 +277,8 @@ class Connexa extends Events {
       // keep track of current length of writeBuffer,
       // we need to remove the sent elements from writeBuffer
       // on `drain` event
-      this._settings['prevBufferLen'] = this._writeBuffer.length;
-      this.emit('flush', this);
+      this._prevBufferLen = this._writeBuffer.length;
+      this.emit('flush');
     }
   }
 
@@ -269,8 +301,8 @@ class Connexa extends Events {
     this._setPing();
 
     // Prolong liveness of socket on heartbeat
-    _heartbeatEvent?.cancel();
-    _heartbeatEvent = this.on('heartbeat', this._onHeartbeat);
+    this.removeAllListeners('heartbeat');
+    this.on('heartbeat', this._onHeartbeat);
   }
 
   /**
@@ -278,7 +310,7 @@ class Connexa extends Events {
    * `pingTimeout` or closes connection.
    */
   void _setPing() {
-    this.pingIntervalTimer =
+    this._pingIntervalTimer =
     new Timer(new Duration(milliseconds: _settings['pingInterval']), () {
       _log.info(
           'writing ping packet - expecting pong within ${_settings['pingTimeout']}');
@@ -291,17 +323,17 @@ class Connexa extends Events {
    * Sends a ping packet.
    */
   void _ping() {
-    this._sendPacket(PacketTypes.ping, null, null, (_) {
-      this.emit('ping', this);
+    this._sendPacket(PacketTypes.ping, null, null, () {
+      this.emit('ping');
     });
   }
 
   /**
    * Resets ping timeout.
    */
-  void _onHeartbeat(int timeout) {
+  void _onHeartbeat([int timeout = null]) {
     // cancel timer
-    pingTimeoutTimer?.cancel();
+    _pingTimeoutTimer?.cancel();
 
     // get the next duration
     int duration = 0;
@@ -312,7 +344,7 @@ class Connexa extends Events {
     }
 
     // create the next timer
-    pingTimeoutTimer = new Timer(new Duration(milliseconds: duration), () {
+    _pingTimeoutTimer = new Timer(new Duration(milliseconds: duration), () {
       if (_readyState == SocketStates.closed) {
         return;
       }
@@ -351,10 +383,17 @@ class Connexa extends Events {
   }
 
   /**
-   * Close the socket.
+   * Closes the connection.
    */
   void close() {
-    // TODO
+    if (this._readyState == SocketStates.opening ||
+        this._readyState == SocketStates.open) {
+      this._readyState = SocketStates.closing;
+
+      this._onClose('forced close');
+      _log.info('socket closing - telling transport to close');
+      this._transport.close();
+    }
   }
 
 }

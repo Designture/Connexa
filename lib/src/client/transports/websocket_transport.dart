@@ -59,9 +59,9 @@ class WebSocketTransport extends Transport {
       this.ws.send(data);
     });
 
-    this.emit('flush', this);
+    this.emit('flush');
     this.settings['writable'] = true;
-    this.emit('drain', this);
+    this.emit('drain');
   }
 
   /**

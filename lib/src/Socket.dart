@@ -3,8 +3,7 @@ library connexa.socket;
 import 'dart:async';
 import 'package:connexa/src/Server.dart';
 import 'package:logging/logging.dart';
-import 'package:connexa/src/Parser.dart';
-import 'package:events/events.dart';
+import 'package:eventus/eventus.dart';
 import 'package:connexa/src/Packet.dart';
 import 'package:connexa/src/Transport.dart';
 import 'dart:io';
@@ -34,7 +33,7 @@ class FlushEvent {
  *
  * @api private
  */
-class Socket extends Events {
+class Socket extends Eventus {
 
   String _id;
   Server _server;

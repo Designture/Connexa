@@ -2,7 +2,7 @@ library connexa.transport;
 
 import 'dart:io';
 import 'Parser.dart';
-import 'package:events/events.dart';
+import 'package:eventus/eventus.dart';
 import 'package:logging/logging.dart';
 import 'package:connexa/src/Packet.dart';
 
@@ -12,7 +12,7 @@ enum TransportStates {
   closing
 }
 
-abstract class Transport extends Events {
+abstract class Transport extends Eventus {
 
   /**
    * Current transport state.

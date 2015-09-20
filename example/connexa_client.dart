@@ -1,9 +1,22 @@
 import 'package:connexa/client.dart';
+import 'dart:html';
 
 main() {
-  Connexa socket = new Connexa('ws://127.0.0.1:8080/socket.io', {'debug': true});
+  ButtonElement btn = querySelector("#btn");
+  DivElement panel = querySelector("#panel");
+  InputElement input = querySelector("#input");
 
-  socket.on('new message', (msg) {
-    print("=> ${msg}");
+  // Open a new Connexa connection
+  Connexa socket = new Connexa('ws://127.0.0.1:8080/socket.io');
+
+  // listen server messages
+  socket.on('chat message', (msg) {
+    panel.appendHtml("<p>Server: ${msg}</p>");
+  });
+
+  // send a new message to the server when the user
+  // click on the button
+  btn.onClick.listen((_) {
+    socket.emit('chat message', input.value);
   });
 }

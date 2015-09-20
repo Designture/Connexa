@@ -2,16 +2,16 @@ name: connexa
 description: A library which aims create an abstraction to the WebSockets in Dart.
 version: 0.1.0
 author: Gil Mendes <gilmendes@designture.net>
-homepage: https://www.designture.net/connexa
+homepage: http://designture.github.io/Connexa/
+documentation:
 
 environment:
   sdk: '>=1.12.0 <2.0.0'
 
 dependencies:
-  logging: any
-  events: any
-  route: any
-  uuid: any
+  logging: ">=0.11.1 <1.0.0"
+  uuid: "0.5.0"
+  eventus: ">=1.0.0 <2.0.0"
 
 dev_dependencies:
   test: '>=0.12.0 <0.13.0'
