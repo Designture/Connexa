@@ -22,6 +22,16 @@ class WebSocketTransport extends Transport {
   Logger _log = new Logger('connexa:ws');
 
   /**
+   * Advertise upgrade support.
+   */
+  final bool handlesUpgrades = true;
+
+  /**
+   * Advertise framing support.
+   */
+  final bool supportsFraming = true;
+
+  /**
    * Constructor.
    *
    * @param WebSocket
@@ -67,20 +77,21 @@ class WebSocketTransport extends Transport {
 
   /**
    * Writes a packet payload.
+   *
+   * @param List    packets
    */
   void send(List<Packet> packets) {
-    if (packets.isNotEmpty) {
-      packets.forEach((Packet p) {
-        // encode packet
-        String encodedPacket = Parser.encode(p);
+    packets.forEach((Packet p) {
+      // encode packet
+      String encodedPacket = Parser.encode(p);
 
-        // send the encoded packet
-        log.info('writing "${encodedPacket}"');
-        this._socket.add(encodedPacket);
-      });
-    } else {
-      throw new Exception('Invalid method call!');
-    }
+      // send the encoded packet
+      log.info('writing "${encodedPacket}"');
+      this.writable = false;
+      this._socket.add(encodedPacket);
+      this.writable = true;
+      this.emit('drain');
+    });
   }
 
   /**
