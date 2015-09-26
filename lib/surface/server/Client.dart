@@ -1,3 +1,5 @@
 part of connexa.surface.server;
 
-class Client {}
+class Client {
+  String get id => null;
+}

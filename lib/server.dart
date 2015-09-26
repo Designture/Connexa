@@ -1,6 +1,7 @@
 library connexa.surface.server;
 
 import 'package:eventus/eventus.dart';
+import 'package:connexa/surface/common/Packet.dart';
 
 part 'package:connexa/surface/server/Namespace.dart';
 
