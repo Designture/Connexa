@@ -3,7 +3,7 @@
 
 library connexa.test;
 
-import 'package:connexa/server.dart';
+import 'package:connexa/server_engine.dart';
 import 'package:test/test.dart';
 
 void main() {

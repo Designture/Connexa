@@ -1,11 +1,11 @@
 library connexa.client;
 
 import 'dart:html';
-import 'package:connexa/src/common/Packet.dart';
-import 'package:connexa/src/common/Parser.dart';
+import 'package:connexa/engine/common/Packet.dart';
+import 'package:connexa/engine/common/Parser.dart';
 import 'package:logging/logging.dart';
-import 'package:connexa/src/client/transport.dart';
-import 'package:connexa/src/client/transports/websocket_transport.dart';
+import 'package:connexa/engine/client/transport.dart';
+import 'package:connexa/engine/client/transports/websocket_transport.dart';
 import 'dart:async';
 import 'package:eventus/eventus.dart';
 
@@ -17,7 +17,7 @@ enum SocketStates {
   closing
 }
 
-class Connexa extends Eventus {
+class Engine extends Eventus {
 
   /**
    * WebSocket instance
@@ -56,7 +56,7 @@ class Connexa extends Eventus {
   /**
    * Constructor
    */
-  Connexa(String uri, [Map options = const {}]) {
+  Engine(String uri, [Map options = const {}]) {
     // default options
     _settings = {
       'transports': ['websocket'],

@@ -1,7 +1,7 @@
 library connexa.parser;
 
 import 'dart:convert';
-import 'package:connexa/src/common/Packet.dart';
+import 'package:connexa/engine/common/Packet.dart';
 
 class Parser {
 

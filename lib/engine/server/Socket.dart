@@ -1,11 +1,11 @@
 library connexa.socket;
 
 import 'dart:async';
-import 'package:connexa/src/server/Server.dart';
+import 'package:connexa/engine/server/Server.dart';
 import 'package:logging/logging.dart';
 import 'package:eventus/eventus.dart';
-import 'package:connexa/src/common/Packet.dart';
-import 'package:connexa/src/server/Transport.dart';
+import 'package:connexa/engine/common/Packet.dart';
+import 'package:connexa/engine/server/Transport.dart';
 import 'dart:io';
 
 enum SocketStates {

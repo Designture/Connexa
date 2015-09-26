@@ -1,10 +1,10 @@
 library connexa.transports.websocket;
 
 import 'dart:io';
-import 'package:connexa/src/server/Transport.dart';
-import 'package:connexa/src/common/Parser.dart';
+import 'package:connexa/engine/server/Transport.dart';
+import 'package:connexa/engine/common/Parser.dart';
 import 'package:logging/logging.dart';
-import 'package:connexa/src/common/Packet.dart';
+import 'package:connexa/engine/common/Packet.dart';
 
 /**
  * WebSocket transport

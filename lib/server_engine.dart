@@ -2,10 +2,10 @@ library connexa;
 
 import 'dart:io';
 import 'dart:async';
-import 'package:connexa/src/server/Server.dart';
+import 'package:connexa/engine/server/Server.dart';
 
-export 'src/server/Server.dart';
-export 'src/server/Socket.dart';
+export 'package:connexa/engine/server/Socket.dart';
+export 'package:connexa/engine/server/Server.dart';
 
 class Connexa {
 

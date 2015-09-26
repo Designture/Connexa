@@ -1,4 +1,4 @@
-import 'package:connexa/client.dart';
+import 'package:connexa/client_engine.dart';
 import 'dart:html';
 
 main() {
@@ -7,7 +7,7 @@ main() {
   InputElement input = querySelector("#input");
 
   // Open a new Connexa connection
-  Connexa socket = new Connexa('ws://127.0.0.1:8080/socket.io');
+  Engine socket = new Engine('ws://127.0.0.1:8080/socket.io');
 
   socket.on('open', () {
     socket.on('message', (msg) {

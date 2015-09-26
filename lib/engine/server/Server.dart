@@ -3,11 +3,11 @@ library connexa.server;
 import 'dart:io' hide Socket;
 import 'package:logging/logging.dart';
 import 'package:eventus/eventus.dart';
-import 'package:connexa/src/server/Socket.dart';
+import 'package:connexa/engine/server/Socket.dart';
 import 'package:uuid/uuid.dart';
-import 'package:connexa/src/server/Transport.dart';
+import 'package:connexa/engine/server/Transport.dart';
 import 'dart:convert';
-import 'package:connexa/src/server/transports/WebSocket.dart';
+import 'package:connexa/engine/server/transports/WebSocket.dart';
 
 /**
  * Protocol errors mappings.

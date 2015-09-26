@@ -1,9 +1,9 @@
 library connexa.client.transport.websocket;
 
-import 'package:connexa/src/client/transport.dart';
+import 'package:connexa/engine/client/transport.dart';
 import 'dart:html';
-import 'package:connexa/src/common/Packet.dart';
-import 'package:connexa/src/common/Parser.dart';
+import 'package:connexa/engine/common/Packet.dart';
+import 'package:connexa/engine/common/Parser.dart';
 import 'dart:async';
 
 class WebSocketTransport extends Transport {

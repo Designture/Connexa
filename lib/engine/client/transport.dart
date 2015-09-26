@@ -1,9 +1,9 @@
 library connexa.client.transport;
 
-import 'package:connexa/src/common/Packet.dart';
-import 'package:connexa/src/common/Parser.dart';
+import 'package:connexa/engine/common/Packet.dart';
+import 'package:connexa/engine/common/Parser.dart';
 import 'package:eventus/eventus.dart';
-import 'package:connexa/src/common/TransportException.dart';
+import 'package:connexa/engine/common/TransportException.dart';
 
 enum TransportStates {
   opening,
