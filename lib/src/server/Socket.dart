@@ -232,7 +232,7 @@ class Socket extends Eventus {
       onError('trabsport closed');
     }
 
-    void onClose() {
+    void onClose(String reason, String description) {
       onError('socket closed');
     }
 

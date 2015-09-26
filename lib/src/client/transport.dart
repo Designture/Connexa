@@ -3,6 +3,7 @@ library connexa.client.transport;
 import 'package:connexa/src/common/Packet.dart';
 import 'package:connexa/src/common/Parser.dart';
 import 'package:eventus/eventus.dart';
+import 'package:connexa/src/common/TransportException.dart';
 
 enum TransportStates {
   opening,
@@ -16,6 +17,7 @@ abstract class Transport extends Eventus {
   String name = '';
 
   Map<String, Object> settings;
+  bool writable = true;
 
   /**
    * A counter used to prevent collisions in the timestamps used
@@ -29,8 +31,8 @@ abstract class Transport extends Eventus {
    * Emits an error
    */
   void onError(String msg, String desc) {
-    Exception exc = new Exception("${msg} - ${desc}");
-    this.emit('error', exc);
+    TransportException err = new TransportException(msg, desc);
+    this.emit('error', err);
   }
 
   /**
@@ -70,7 +72,7 @@ abstract class Transport extends Eventus {
    */
   void onOpen() {
     this._readyState = TransportStates.open;
-    this.settings['writable'] = true;
+    this.writable = true;
     this.emit('open');
   }
 

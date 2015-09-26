@@ -5,8 +5,8 @@ import 'package:connexa/server.dart';
 main() {
   Connexa.listen(null, 8080, {'debug': true}).then((Server server) {
     server.on('connection', (Socket socket) {
-      socket.on('chat message', (msg) {
-        server.emit('chat message', msg);
+      socket.on('message', (msg) {
+        socket.send({'msg': msg['msg']});
       });
 
       socket.on('disconnect', (_) {

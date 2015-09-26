@@ -4,6 +4,7 @@ import 'package:connexa/src/client/transport.dart';
 import 'dart:html';
 import 'package:connexa/src/common/Packet.dart';
 import 'package:connexa/src/common/Parser.dart';
+import 'dart:async';
 
 class WebSocketTransport extends Transport {
 
@@ -52,7 +53,7 @@ class WebSocketTransport extends Transport {
    * Writes data to socket.
    */
   void write(List<Packet> packets) {
-    this.settings['writable'] = false;
+    this.writable = false;
 
     packets.forEach((Packet p) {
       String data = Parser.encode(p);
@@ -60,8 +61,11 @@ class WebSocketTransport extends Transport {
     });
 
     this.emit('flush');
-    this.settings['writable'] = true;
-    this.emit('drain');
+
+    new Timer(new Duration(milliseconds: 0), () {
+      this.writable = true;
+      this.emit('drain');
+    });
   }
 
   /**

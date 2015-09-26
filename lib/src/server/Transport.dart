@@ -5,7 +5,7 @@ import '../common/Parser.dart';
 import 'package:eventus/eventus.dart';
 import 'package:logging/logging.dart';
 import 'package:connexa/src/common/Packet.dart';
-import 'package:connexa/src/server/TransportException.dart';
+import 'package:connexa/src/common/TransportException.dart';
 
 enum TransportStates {
   open,

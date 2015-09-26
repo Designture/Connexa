@@ -268,7 +268,7 @@ class Server extends Eventus {
       this.clients[id] = socket;
 
       // define action on socket close
-      socket.on('close', () {
+      socket.on('close', ([String reason, String description]) {
         this.clients.remove(id);
       });
 

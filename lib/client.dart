@@ -270,7 +270,7 @@ class Connexa extends Eventus {
    */
   void _flush() {
     if (this._readyState != SocketStates.closed &&
-        this._transport.settings['writable'] &&
+        this._transport.writable &&
         this._writeBuffer.isNotEmpty) {
       _log.info('flushing ${this._writeBuffer.length} packet in socket');
       this._transport.send(this._writeBuffer);
