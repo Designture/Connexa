@@ -43,7 +43,7 @@ class SocketEngine extends Eventus {
   /**
    * Logger
    */
-  Logger _log = new Logger('connexa:socket');
+  Logger _log = new Logger('engine:socket');
 
   SocketStates get readyState => _readyState;
 

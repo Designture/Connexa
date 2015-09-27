@@ -33,7 +33,7 @@ abstract class Transport extends Eventus {
   /**
    * Logger
    */
-  Logger _log = new Logger('connexa:transport');
+  Logger _log = new Logger('engine:transport');
 
   /**
    * Is writable?

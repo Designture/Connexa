@@ -19,7 +19,7 @@ class WebSocketTransport extends Transport {
   /**
    *
    */
-  Logger _log = new Logger('connexa:ws');
+  Logger _log = new Logger('engine:ws');
 
   /**
    * Advertise upgrade support.

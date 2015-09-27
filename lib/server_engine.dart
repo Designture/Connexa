@@ -42,7 +42,7 @@ class ConnexaEngine {
    * @api public
    */
   static Future<ServerEngine> listenV6(
-      [HttpServer server, int port = 8080, options = const {}]) async {
+      {HttpServer server, int port: 8080, options: const {}}) async {
     if (server == null) {
       server = await HttpServer.bind(InternetAddress.ANY_IP_V6, port);
     }
