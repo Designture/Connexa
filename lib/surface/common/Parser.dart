@@ -15,29 +15,29 @@ class Parser {
   /**
    * Logger
    */
-  Logger _log = new Logger('connexa:parser');
+  static Logger _log = new Logger('connexa:parser');
 
   /**
    * Gte logger instance
    */
-  Logger get log => _log;
+  static Logger get log => _log;
 
   /**
    * Encode a packet as a single string if non-binary, or as a
    * buffer sequence, depending on packet type.
    */
-  void encoder(Packet packet, Function callback) {
+  static void encode(Packet packet, Function callback) {
     log.info('encoding packet ${packet}');
 
     if (packet.type == PacketType.binary_event ||
         packet.type == PacketType.binary_ack) {
-      this._encodeAsBinary(packet, callback);
+      _encodeAsBinary(packet, callback);
     } else {
-      this._encodeAsString(packet, callback);
+      _encodeAsString(packet, callback);
     }
   }
 
-  void _encodeAsString(Packet packet, Function callback) {
+  static void _encodeAsString(Packet packet, Function callback) {
     String encoded = '';
     bool nsp = false;
 
@@ -61,7 +61,7 @@ class Parser {
     }
 
     // json data
-    if (packet.data.isNotEmpty) {
+    if (packet.data != null) {
       if (nsp) {
         encoded += ',';
       }
@@ -79,14 +79,14 @@ class Parser {
    * deconstructing packet into object with placeholders and
    * a list of buffers.
    */
-  void _encodeAsBinary(Packet packet, Function callback) {
+  static _encodeAsBinary(Packet packet, Function callback) {
     // TODO:
   }
 
   /**
    * Decode a packet String to Packet type
    */
-  Packet decodeString(String encoded) {
+  static Packet decodeString(String encoded) {
     Packet packet = new Packet();
     int i = 0;
 
