@@ -335,7 +335,7 @@ class Socket extends Eventus {
    *
    * @param {Boolean} if `true`, closes the underlying connection
    */
-  void disconnect(bool close) {
+  void disconnect([bool close = false]) {
     if (!this._connected) {
       return;
     }

@@ -47,6 +47,8 @@ class SocketEngine extends Eventus {
 
   SocketStates get readyState => _readyState;
 
+  HttpRequest get request => _req;
+
   /**
    * Constructor
    */

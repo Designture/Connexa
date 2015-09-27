@@ -109,7 +109,7 @@ class Namespace extends Eventus {
           // track socket
           this.sockets.add(socket);
 
-          // it's paramount that the internal `onconnect` logic
+          // it's paramount that the internal `onConnect` logic
           // fires before user-set events to prevent state order
           // violations (such as a disconnection before the connection
           // logic is complete)
