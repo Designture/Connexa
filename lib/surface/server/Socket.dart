@@ -142,7 +142,7 @@ class Socket extends Eventus {
       return;
     }
 
-    this._adapter.add(this.id, room, (err) {
+    this._adapter.add(this.id, room, (err, _) {
       if (err != null) {
         if (fn != null) {
           fn(err);

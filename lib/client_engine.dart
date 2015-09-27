@@ -178,7 +178,7 @@ class Engine extends Eventus {
     if (this._readyState == SocketStates.opening ||
         this._readyState == SocketStates.open) {
       _log.info(
-          'socket receive: type "${packet.type}", data "${packet.content}"');
+          'socket receive: type "${packet.type}", data "${packet.data}"');
 
       this.emit('packet', packet);
 
@@ -187,15 +187,15 @@ class Engine extends Eventus {
 
       switch (packet.type) {
         case PacketTypes.open:
-          this._onHandshake(packet.content);
+          this._onHandshake(packet.data);
           break;
         case PacketTypes.pong:
           this._setPing();
           this.emit('pong');
           break;
         case PacketTypes.message:
-          this.emit('data', packet.content);
-          this.emit('message', packet.content);
+          this.emit('data', packet.data);
+          this.emit('message', packet.data);
           break;
         default:
       }
@@ -240,7 +240,7 @@ class Engine extends Eventus {
       this._pingTimeoutTimer?.cancel();
 
       // stop event from firing again for transport
-      // TODO: remove all listener 'close' on transport
+      this._transport.removeAllListeners('close');
 
       // ensure transport won't stay open
       this._transport.close();
@@ -255,8 +255,7 @@ class Engine extends Eventus {
       this._settings['sid'] = null;
 
       // emit close event
-      // TODO: add desc like thirst parameter
-      this.emit('close', reason);
+      this.emit('close', reason, desc);
 
       // clean buffer after, so users can still
       // grab the buffer on 'close' event

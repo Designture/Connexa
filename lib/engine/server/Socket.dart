@@ -108,8 +108,8 @@ class SocketEngine extends Eventus {
           this.emit('heartbeat');
           break;
         case PacketTypes.message:
-          this.emit('data', packet.content);
-          this.emit('message', packet.content);
+          this.emit('data', packet.data);
+          this.emit('message', packet.data);
           break;
         default:
           this.transport.close();
@@ -336,7 +336,7 @@ class SocketEngine extends Eventus {
 
       // add the packet data
       if (data != null) {
-        packet.content.addAll(data);
+        packet.data = data;
       }
 
       // export packetCreate event

@@ -66,7 +66,7 @@ class Namespace extends Eventus {
     List fns = this._fns.toList();
 
     if (fns.isEmpty) {
-      fn(null);
+      return fn(null);
     }
 
     void runInner(i) {

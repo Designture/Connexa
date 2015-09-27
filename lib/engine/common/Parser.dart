@@ -18,7 +18,7 @@ class Parser {
     encoded += packet.type.index.toString();
 
     // encode packet content if exists (data fragment is optional)
-    encoded += JSON.encode(packet.content);
+    encoded += JSON.encode(packet.data);
 
     // returns the packet encoded
     return encoded;
@@ -53,7 +53,7 @@ class Parser {
     packet.type = getPacketTypeFromChar(content[0]);
 
     if (content.length > 1) {
-      packet.addAll(JSON.decode(content.substring(1)));
+      packet.data = JSON.decode(content.substring(1));
     }
 
     return packet;

@@ -6,8 +6,8 @@ class Client {
   SocketEngine _connection;
   String _id;
   HttpRequest _request;
-  List<Socket> _sockets;
-  Map<String, Socket> _namespaces;
+  List<Socket> _sockets = [];
+  Map<String, Socket> _namespaces = {};
   List<String> _connectBuffer = [];
 
   Logger log = new Logger('connexa:client');
@@ -116,7 +116,7 @@ class Client {
     if (this._connection.readyState == SocketStates.open) {
       log.info('writing packet ${packet}');
 
-      if (opts.containsKey('preEncoded')) {
+      if (!opts.containsKey('preEncoded')) {
         // not broadcasting, need to encode
         Parser.encode(packet, (List<String> encodedPackets) {
           writeToEngine(encodedPackets);

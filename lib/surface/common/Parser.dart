@@ -33,11 +33,12 @@ class Parser {
         packet.type == PacketType.binary_ack) {
       _encodeAsBinary(packet, callback);
     } else {
-      _encodeAsString(packet, callback);
+      String encoded = _encodeAsString(packet);
+      callback([encoded]);
     }
   }
 
-  static void _encodeAsString(Packet packet, Function callback) {
+  static String _encodeAsString(Packet packet) {
     String encoded = '';
     bool nsp = false;
 
@@ -70,8 +71,7 @@ class Parser {
 
     log.info('encoded ${packet} as ${encoded}');
 
-    // call callback
-    callback(encoded);
+    return encoded;
   }
 
   /**
