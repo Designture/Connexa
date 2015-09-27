@@ -151,7 +151,7 @@ class Namespace extends Eventus {
       return arg1;
     }
 
-    return [];
+    return null;
   }
 
   /**
