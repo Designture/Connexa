@@ -9,9 +9,9 @@ import 'package:eventus/eventus.dart';
 
 class SocketNamespace extends Eventus {
 
-  Server _server;
+  ServerEngine _server;
   String _name;
-  Map<String, Socket> _sockets = new Map();
+  Map<String, SocketEngine> _sockets = new Map();
   Map<String, Object> _flags;
   Function _auth;
 
@@ -98,9 +98,9 @@ class SocketNamespace extends Eventus {
    *
    * @param {Boolean} whether the socket will be readable when initialized
    */
-  Socket socket(String sid, [bool readable = false]) {
+  SocketEngine socket(String sid, [bool readable = false]) {
     return this._sockets.putIfAbsent(sid, () {
-      new Socket(_server, sid, this, readable);
+      new SocketEngine(_server, sid, this, readable);
     });
   }
 
@@ -132,7 +132,7 @@ class SocketNamespace extends Eventus {
    * Handles a packet.
    */
   void handlePacket(String sessid, Packet packet) {
-    Socket socket = this.socket(sessid);
+    SocketEngine socket = this.socket(sessid);
     bool dataAck = packet.ack == 'data';
 
     var ack = () {

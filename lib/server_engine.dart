@@ -7,7 +7,7 @@ import 'package:connexa/engine/server/Server.dart';
 export 'package:connexa/engine/server/Socket.dart';
 export 'package:connexa/engine/server/Server.dart';
 
-class Connexa {
+class ConnexaEngine {
 
   /**
    * Version.
@@ -23,14 +23,14 @@ class Connexa {
    * @param {Map} opts to be passed to Manager and/or http server
    * @api public
    */
-  static Future<Server> listen(
-      [HttpServer server, int port = 8080, options = const {}]) async {
+  static Future<ServerEngine> listen(
+      {HttpServer server, int port: 8080, options: const {}}) async {
     if (server == null) {
       server = await HttpServer.bind(InternetAddress.LOOPBACK_IP_V4, port);
     }
 
     // create a new Manager instance
-    return new Server(server, options);
+    return new ServerEngine(server, options);
   }
 
   /**
@@ -41,14 +41,14 @@ class Connexa {
    * @param {Map} opts to be passed to Manager and/or http server
    * @api public
    */
-  static Future<Server> listenV6(
+  static Future<ServerEngine> listenV6(
       [HttpServer server, int port = 8080, options = const {}]) async {
     if (server == null) {
       server = await HttpServer.bind(InternetAddress.ANY_IP_V6, port);
     }
 
     // create a new Manager instance
-    return new Server(server, options);
+    return new ServerEngine(server, options);
   }
 
 }

@@ -21,10 +21,10 @@ enum SocketStates {
  *
  * @api private
  */
-class Socket extends Eventus {
+class SocketEngine extends Eventus {
 
   String _id;
-  Server _server;
+  ServerEngine _server;
   SocketStates _readyState = SocketStates.opening;
   Transport transport;
   HttpRequest _req;
@@ -45,10 +45,12 @@ class Socket extends Eventus {
    */
   Logger _log = new Logger('connexa:socket');
 
+  SocketStates get readyState => _readyState;
+
   /**
    * Constructor
    */
-  Socket(String this._id, Server this._server, Transport transport,
+  SocketEngine(String this._id, ServerEngine this._server, Transport transport,
       HttpRequest this._req) {
     this.setTransport(transport);
     this.onOpen();

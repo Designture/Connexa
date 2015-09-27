@@ -26,7 +26,7 @@ Map<int, String> ProtocolErrorMessage = {
   3: 'Bad request'
 };
 
-class Server extends Eventus {
+class ServerEngine extends Eventus {
 
   /**
    * HttpServer instance.
@@ -41,17 +41,17 @@ class Server extends Eventus {
   /**
    * Logger
    */
-  Logger log = new Logger('connexa:server');
+  Logger log = new Logger('engine:server');
 
   /**
    * Map with all connected clients.
    */
-  Map<String, Socket> clients = new Map();
+  Map<String, SocketEngine> clients = new Map();
 
   /**
    * Map with all clients's sockets.
    */
-  Map<Socket, WebSocket> sockets = new Map();
+  Map<SocketEngine, WebSocket> sockets = new Map();
 
   /**
    * Map to store some runtime data.
@@ -61,7 +61,7 @@ class Server extends Eventus {
   /**
    * Constructor.
    */
-  Server(HttpServer server, Map options) {
+  ServerEngine(HttpServer server, Map options) {
     this._server = server;
 
     // setup the default settings
@@ -257,7 +257,7 @@ class Server extends Eventus {
       transport.supportsBinary = !query.containsKey('b64');
 
       // create a new Socket instance
-      Socket socket = new Socket(id, this, transport, req);
+      SocketEngine socket = new SocketEngine(id, this, transport, req);
 
       // TODO: add support to cookies
 
@@ -279,9 +279,9 @@ class Server extends Eventus {
   /**
    * Close all clients.
    */
-  Server close() {
+  ServerEngine close() {
     log.info('closing all open clients');
-    this.clients.forEach((String k, Socket s) => s.close());
+    this.clients.forEach((String k, SocketEngine s) => s.close());
     return this;
   }
 
