@@ -232,7 +232,7 @@ class SocketEngine extends Eventus {
       transport = null;
     }
 
-    void onTransportClose() {
+    void onTransportClose([String reason = '', String description = '']) {
       onError('trabsport closed');
     }
 

@@ -7,7 +7,7 @@ main() {
   InputElement input = querySelector("#input");
 
   // Open a new Connexa connection
-  Engine socket = new Engine('ws://127.0.0.1:8080/socket.io');
+  ClientEngine socket = new ClientEngine('ws://127.0.0.1:8080/socket.io');
 
   socket.on('open', () {
     socket.on('message', (msg) {

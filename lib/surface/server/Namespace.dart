@@ -159,8 +159,7 @@ class Namespace extends Eventus {
    */
   void emit(String event, [arg1, arg2, arg3]) {
     if (Namespace._eventsBlackList.contains(event)) {
-      // TODO
-      log.warning('TODO');
+      super.emit(event, arg1, arg2, arg3);
     } else {
       // set up a packet
       // TODO add binary support

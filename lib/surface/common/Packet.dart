@@ -36,6 +36,11 @@ class Packet {
    */
   Object id = '';
 
+  /**
+   * Packet options.
+   */
+  Map options = {};
+
   Packet(
       [PacketType this.type = null, Object this.data = null, String this.namespace = '/', String this.id]);
 

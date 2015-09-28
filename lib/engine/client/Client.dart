@@ -15,7 +15,7 @@ enum SocketStates {
   closing
 }
 
-class Engine extends Eventus {
+class ClientEngine extends Eventus {
 
   /**
    * WebSocket instance
@@ -51,10 +51,14 @@ class Engine extends Eventus {
   Timer _pingIntervalTimer = null;
   Timer _pingTimeoutTimer = null;
 
+  SocketStates get readyState => _readyState;
+
+  String get id => _settings['sid'];
+
   /**
    * Constructor
    */
-  Engine(String uri, [Map options = const {}]) {
+  ClientEngine(String uri, [Map options = const {}]) {
     // default options
     _settings = {
       'transports': ['websocket'],
@@ -86,13 +90,13 @@ class Engine extends Eventus {
       _settings['query'] = uriP.queryParameters;
     }
 
-    this._open();
+    this.open();
   }
 
   /**
    * Initializes transport to use and start probe.
    */
-  void _open() {
+  void open() {
     this._readyState = SocketStates.opening;
 
     Transport transport = this._createTransport('websocket');
@@ -320,7 +324,7 @@ class Engine extends Eventus {
    * Sends a ping packet.
    */
   void _ping() {
-    this._sendPacket(PacketTypes.ping, null, null, () {
+    this.sendPacket(PacketTypes.ping, null, null, () {
       this.emit('ping');
     });
   }
@@ -353,7 +357,7 @@ class Engine extends Eventus {
   /**
    * Sends a packet.
    */
-  void _sendPacket(PacketTypes type, [Map data, Map options, Function fn]) {
+  void sendPacket(PacketTypes type, [Map data, Map options, Function fn]) {
     // check if the connection is open
     if (this._readyState == SocketStates.closing ||
         this._readyState == SocketStates.closed) {
@@ -376,7 +380,7 @@ class Engine extends Eventus {
    * Send a new message.
    */
   void send(Map<String, Object> data, [Map options = const {}]) {
-    this._sendPacket(PacketTypes.message, data);
+    this.sendPacket(PacketTypes.message, data);
   }
 
   /**
